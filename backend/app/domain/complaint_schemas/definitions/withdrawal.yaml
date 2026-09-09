@@ -1,0 +1,49 @@
+type: withdrawal
+label: Withdrawal problem
+description: >
+  The customer reports a problem withdrawing funds (failed, stuck, delayed,
+  or incorrect amount).
+
+common_fields:
+  - key: user_id
+    label: User ID
+    type: string
+    required: true
+    description: The customer's account/user identifier on the platform.
+    extraction_hint: >
+      A user or account ID. Often numeric or alphanumeric. May be labelled
+      "user id", "account id", "uid", or "customer number".
+    example: "U-482913"
+    validation:
+      min_length: 2
+      max_length: 64
+
+  - key: account_email
+    label: Account email
+    type: email
+    required: true
+    description: The email address registered on the customer's account.
+    extraction_hint: The email tied to the account, which may differ from the sender address.
+    example: "jane.doe@example.com"
+
+  - key: withdrawal_transaction_id
+    label: Withdrawal transaction ID
+    type: string
+    required: true
+    description: The identifier of the specific withdrawal transaction in question.
+    extraction_hint: >
+      A transaction / reference / order ID for the withdrawal. May be a hash,
+      UUID, or numeric reference.
+    example: "TXN-9f3a12bc"
+    validation:
+      min_length: 4
+      max_length: 128
+
+  - key: problem_description
+    label: Problem description
+    type: text
+    required: true
+    description: A clear description of what went wrong with the withdrawal.
+    extraction_hint: >
+      Summarise what the customer experienced: what they tried, what happened,
+      any error messages, and timing.

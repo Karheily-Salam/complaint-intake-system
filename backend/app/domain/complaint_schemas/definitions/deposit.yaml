@@ -1,0 +1,53 @@
+type: deposit
+label: Deposit problem
+description: >
+  The customer reports a problem depositing funds (not credited, delayed,
+  wrong amount, or sent to the wrong destination).
+
+# Fields required regardless of how the deposit was made.
+common_fields:
+  - key: user_id
+    label: User ID
+    type: string
+    required: true
+    description: The customer's account/user identifier on the platform.
+    extraction_hint: A user or account ID. Often numeric or alphanumeric.
+    example: "U-482913"
+    validation:
+      min_length: 2
+      max_length: 64
+
+  - key: account_email
+    label: Account email
+    type: email
+    required: true
+    description: The email address registered on the customer's account.
+    extraction_hint: The email tied to the account, which may differ from the sender address.
+    example: "jane.doe@example.com"
+
+  - key: source_wallet_or_account
+    label: Source wallet or account
+    type: string
+    required: true
+    description: Where the funds were sent from (bank account, card, wallet address, etc.).
+    extraction_hint: >
+      The origin of the deposit: a bank account (masked), card, e-wallet handle,
+      or crypto wallet address.
+
+  - key: transaction_date
+    label: Transaction date
+    type: date
+    required: true
+    description: The date the deposit was made.
+    extraction_hint: A calendar date. Accept relative references like "yesterday" if resolvable.
+    example: "2026-09-08"
+    validation:
+      date_formats:
+        - "%Y-%m-%d"
+        - "%d/%m/%Y"
+        - "%d.%m.%Y"
+
+# Method-specific fields. Add a new method by adding an entry here (or by dropping
+# a file in definitions/deposit_methods/ and extending the loader) - no engine changes.
+method_selector_label: How did you make the deposit?
+methods: []

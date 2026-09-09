@@ -1,0 +1,25 @@
+Extract only the information that is explicitly present in the customer's message.
+Do not guess or invent values. If a field is not clearly stated, omit it.
+
+Fields to look for:
+{% for f in fields %}
+- key: {{ f.key }}
+  label: {{ f.label }}
+  type: {{ f.type }}
+  what to look for: {{ f.extraction_hint or f.description }}
+{% endfor %}
+
+Already known (do not re-extract these):
+{% for k, v in known.items() %}
+- {{ k }}: {{ v }}
+{% else %}
+- (none)
+{% endfor %}
+
+Customer message:
+"""
+{{ message }}
+"""
+
+Respond with JSON only:
+{"fields": [{"key": "<key>", "value": "<value>", "confidence": <0-1>}]}

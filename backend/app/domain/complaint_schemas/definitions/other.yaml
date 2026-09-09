@@ -1,0 +1,33 @@
+type: other
+label: Other issue
+description: >
+  Any complaint that is not clearly a withdrawal or deposit problem. There is no
+  fixed field set yet; the engine produces a concise problem description and
+  captures any obviously useful identifiers.
+
+open_schema: true
+
+# Optional fields the engine will opportunistically capture if present, but will
+# not block the conversation on. Promote these to required (or add new ones) as
+# the "other" taxonomy is defined.
+common_fields:
+  - key: user_id
+    label: User ID
+    type: string
+    required: false
+    description: The customer's account/user identifier, if relevant.
+    extraction_hint: A user or account ID, if the customer mentions one.
+
+  - key: account_email
+    label: Account email
+    type: email
+    required: false
+    description: The account email, if relevant.
+    extraction_hint: The email tied to the account, if mentioned.
+
+  - key: problem_description
+    label: Problem description
+    type: text
+    required: true
+    description: A concise, self-contained description of the customer's issue.
+    extraction_hint: Summarise the core problem in two or three sentences.
