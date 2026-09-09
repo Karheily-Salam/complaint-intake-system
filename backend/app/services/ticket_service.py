@@ -26,33 +26,45 @@ class TicketService:
         schema = self.registry.try_get(complaint.type)
         label = schema.label if schema else (complaint.type or "Complaint")
 
-        collected = {f.key: f.value for f in complaint.fields if f.value is not None}
-        structured = {
-            "complaint_type": complaint.type,
-            "method_key": complaint.method_key,
-            "fields": collected,
-        }
-
-        reference = self._make_reference()
-        description = complaint.concise_description or collected.get(
-            "problem_description", "No description provided."
-        )
-
         ticket = Ticket(
-            reference=reference,
+            reference=self._make_reference(),
             complaint_id=complaint.id,
             conversation_id=conversation.id,
             customer_id=conversation.customer_id,
             type=complaint.type or "other",
             status=TicketStatus.NEW,
             title=f"{label} - {conversation.customer.email}",
-            concise_description=description,
-            structured_data=structured,
+            concise_description=self._description(complaint),
+            structured_data=self._structured(complaint),
         )
         self.tickets.add(ticket)
-
         complaint.status = ComplaintStatus.TICKETED
         return ticket
+
+    def refresh_snapshot(self, ticket: Ticket, complaint: Complaint) -> Ticket:
+        """Keep the ticket's denormalised data in step with later corrections.
+
+        Employee-owned fields (status, priority) are never touched.
+        """
+        ticket.concise_description = self._description(complaint)
+        ticket.structured_data = self._structured(complaint)
+        return ticket
+
+    def _structured(self, complaint: Complaint) -> dict:
+        return {
+            "complaint_type": complaint.type,
+            "method_key": complaint.method_key,
+            "fields": {f.key: f.value for f in complaint.fields if f.value is not None},
+        }
+
+    @staticmethod
+    def _description(complaint: Complaint) -> str:
+        if complaint.concise_description:
+            return complaint.concise_description
+        for f in complaint.fields:
+            if f.key == "problem_description" and f.value:
+                return f.value
+        return "No description provided."
 
     def _make_reference(self) -> str:
         seq = self.tickets.next_sequence()

@@ -1,26 +1,36 @@
-"""The AI Conversation Engine.
+"""The AI Conversation Engine - deterministic multi-turn orchestrator.
 
-Responsibilities (see PROJECT GOAL 1-11):
-- classify the complaint type
-- extract information from each message
-- track which required fields are present vs missing
-- ask only for missing fields
-- validate collected information
-- decide when the complaint is ready to become a ticket
+It owns every decision about conversation state. The AI provider only classifies,
+extracts, summarises and writes language; it never decides what happens next.
 
-It depends only on :class:`AIProvider` and :class:`ComplaintSchemaRegistry`.
-It performs no I/O and holds no state - callers pass a :class:`ConversationState`
-and persist the returned :class:`EngineOutcome`.
+Guarantees (see the project brief):
+- information may arrive in any order and across many messages
+- an already-collected valid field is never asked for again
+- newly extracted fields are merged with existing ones; empty/absent extraction
+  never clears a field
+- invalid values are detected and requested again
+- a customer may correct a previously supplied value
+- the complaint type may become known only after an ambiguous first message
+- a deposit method may be discovered mid-conversation; its method-specific fields
+  become required only once the method is known
+- the complaint becomes ready/ticketable exactly when the deterministic schema
+  requirements are satisfied
+
+It depends only on :class:`AIProvider` and :class:`ComplaintSchemaRegistry` and
+performs no I/O.
 """
 
 from __future__ import annotations
 
-from app.ai.base import AIProvider, TypeOption
-from app.conversation.state import ConversationState, EngineOutcome
+from app.ai.base import AIProvider, InvalidField, ReplyKind, ReplyRequest, TypeOption
+from app.conversation.state import ConversationState, EngineOutcome, FieldOutcome
+from app.core.config import settings
 from app.domain.complaint_schemas.registry import ComplaintSchemaRegistry
 from app.domain.complaint_schemas.spec import ComplaintSchema, FieldSpec
-from app.domain.enums import ConversationStatus
-from app.domain.validation import validate_fields
+from app.domain.enums import ConversationStatus, FieldStatus
+from app.domain.validation import validate_field
+
+_PROBLEM_DESCRIPTION_KEY = "problem_description"
 
 
 class ConversationEngine:
@@ -34,107 +44,218 @@ class ConversationEngine:
             method_key=state.method_key,
         )
 
-        # 1-2. Classify if we do not yet know the complaint type.
-        if not outcome.complaint_type:
+        # ---- 1. classify the complaint type (only while unknown) ----
+        complaint_type = state.complaint_type
+        if complaint_type is None:
             options = [
                 TypeOption(type=s.type, label=s.label, description=s.description)
                 for s in self._registry.all()
             ]
             classification = await self._ai.classify(state.latest_message, options)
             outcome.classification = classification
-            outcome.complaint_type = classification.type
+            if (
+                classification.type is not None
+                and classification.confidence >= settings.min_classification_confidence
+            ):
+                complaint_type = classification.type
 
-        schema = self._registry.try_get(outcome.complaint_type)
-        if schema is None:
-            # Could not classify yet - ask the customer to clarify.
-            outcome.next_status = ConversationStatus.OPEN
-            outcome.reply = await self._ai.compose_reply(
-                [],
-                complaint_label="your issue",
-                customer_name=state.customer_name,
-                extra_context=(
-                    "Could you tell us whether this is about a withdrawal, a deposit, "
-                    "or something else, and briefly what went wrong?"
-                ),
-            )
-            return outcome
+        if complaint_type is None:
+            return await self._clarify_type(state, outcome)
 
-        # 3. Determine the field set for this complaint (+ method).
-        needs_method = bool(schema.methods) and not outcome.method_key
-        specs = schema.fields_for(outcome.method_key)
+        schema = self._registry.get(complaint_type)
+        outcome.complaint_type = complaint_type
 
-        # 4. Extract whatever is present in the latest message.
-        extraction = await self._ai.extract(state.latest_message, specs, known=state.collected)
-        outcome.newly_extracted = extraction.fields
+        # ---- 2. seed current field state from what we already have ----
+        current: dict[str, FieldOutcome] = {
+            f.key: FieldOutcome(f.key, f.value, f.status) for f in state.collected
+        }
 
-        merged = dict(state.collected)
-        for f in extraction.fields:
-            merged.setdefault(f.key, f.value)  # never overwrite an existing value
+        # ---- 3-5. extraction, with a second pass if the method just appeared ----
+        method_key = self._resolved_method(schema, current)
+        specs = schema.fields_for(method_key)
+        current = await self._extract_and_merge(state.latest_message, specs, current)
 
-        # 5-6. Validate and compute what is still missing.
-        results = validate_fields(specs, merged)
-        outcome.validation_errors = [r for r in results if not r.ok and _is_required(specs, r.key)]
+        rediscovered = self._resolved_method(schema, current)
+        if rediscovered != method_key:
+            method_key = rediscovered
+            specs = schema.fields_for(method_key)
+            current = await self._extract_and_merge(state.latest_message, specs, current)
+        outcome.method_key = method_key
 
-        valid_keys = {r.key for r in results if r.ok and r.normalized_value is not None}
-        outcome.missing_fields = [
-            spec
-            for spec in specs
-            if spec.required and spec.key not in valid_keys
-        ]
+        # ---- 6. concise description, kept fresh every turn ----
+        transcript = state.inbound_transcript or [state.latest_message]
+        summary = (await self._ai.summarize(transcript)).strip()
 
-        # Concise description for "other" (open schema) or whenever we have text.
-        outcome.concise_description = await self._maybe_summarize(schema, state, merged)
+        # ---- 7. open schema ("other"): description-sufficiency gate ----
+        if schema.open_schema:
+            if len(summary.split()) >= schema.min_description_words:
+                current[_PROBLEM_DESCRIPTION_KEY] = FieldOutcome(
+                    _PROBLEM_DESCRIPTION_KEY, summary, FieldStatus.VALIDATED, changed=True
+                )
+                outcome.concise_description = summary
+            else:
+                return await self._clarify_vague(state, schema, current, summary, outcome)
+        else:
+            outcome.concise_description = summary or None
 
-        # Decide next step.
-        if needs_method:
-            outcome.needs_method_selection = True
-            outcome.next_status = ConversationStatus.COLLECTING_INFO
-            outcome.reply = await self._ai.compose_reply(
-                [],
-                complaint_label=schema.label,
-                customer_name=state.customer_name,
-                extra_context=schema.method_selector_label or "Which method did you use?",
-            )
-            return outcome
+        # ---- 8. deterministic missing / invalid computation ----
+        specs_now = schema.fields_for(method_key)
+        outcome.fields = list(current.values())
+        missing, invalid = self._classify_fields(specs_now, current)
+        outcome.missing_fields = missing
+        outcome.invalid_fields = invalid
 
-        if not outcome.missing_fields and not outcome.validation_errors:
-            # 9-11. All required info collected and valid.
+        # ---- 9. transition ----
+        if not missing and not invalid:
             outcome.is_complete = True
             outcome.next_status = ConversationStatus.VALIDATING
             outcome.reply = await self._ai.compose_reply(
-                [], complaint_label=schema.label, customer_name=state.customer_name
+                ReplyRequest(
+                    kind=ReplyKind.ACKNOWLEDGE,
+                    complaint_label=schema.label,
+                    customer_name=state.customer_name,
+                )
             )
             return outcome
 
-        # 7-8. Still collecting - ask only for missing / invalid fields.
-        ask_for = list(outcome.missing_fields)
-        invalid_keys = {r.key for r in outcome.validation_errors}
-        ask_for.extend(s for s in specs if s.key in invalid_keys and s not in ask_for)
-
         outcome.next_status = ConversationStatus.COLLECTING_INFO
         outcome.reply = await self._ai.compose_reply(
-            ask_for,
-            complaint_label=schema.label,
-            customer_name=state.customer_name,
-            extra_context=_format_validation_hints(outcome.validation_errors),
+            ReplyRequest(
+                kind=ReplyKind.ASK,
+                complaint_label=schema.label,
+                customer_name=state.customer_name,
+                missing_fields=missing,
+                invalid_fields=[
+                    InvalidField(
+                        key=s.key,
+                        label=s.label,
+                        error=(current[s.key].validation_error or "Please check this value."),
+                    )
+                    for s in invalid
+                ],
+            )
         )
         return outcome
 
-    async def _maybe_summarize(
-        self, schema: ComplaintSchema, state: ConversationState, merged: dict[str, str]
+    # ------------------------------------------------------------------ helpers
+
+    def _resolved_method(
+        self, schema: ComplaintSchema, current: dict[str, FieldOutcome]
     ) -> str | None:
-        if schema.open_schema or "problem_description" in merged:
-            transcript = state.inbound_transcript or [state.latest_message]
-            return await self._ai.summarize(transcript)
-        return None
+        if not schema.methods or schema.method_field is None:
+            return None
+        fo = current.get(schema.method_field.key)
+        return fo.value if (fo and fo.is_present) else None
+
+    async def _extract_and_merge(
+        self,
+        message: str,
+        specs: list[FieldSpec],
+        current: dict[str, FieldOutcome],
+    ) -> dict[str, FieldOutcome]:
+        known = {k: fo.value for k, fo in current.items() if fo.is_present and fo.value}
+        extraction = await self._ai.extract(message, specs, known)
+        spec_by_key = {s.key: s for s in specs}
+        result = dict(current)
+
+        for ef in extraction.fields:
+            spec = spec_by_key.get(ef.key)
+            if spec is None:
+                continue  # provider returned an unknown key - ignore it
+            raw = (ef.value or "").strip()
+            if not raw:
+                continue  # never clear a field with empty extraction
+
+            vr = validate_field(spec, raw)
+            new_status = FieldStatus.VALIDATED if vr.ok else FieldStatus.INVALID
+            new_value = vr.normalized_value if (vr.ok and vr.normalized_value) else raw
+            existing = result.get(ef.key)
+
+            if existing is None or existing.status == FieldStatus.INVALID:
+                result[ef.key] = FieldOutcome(
+                    ef.key, new_value, new_status, vr.error, ef.confidence, changed=True
+                )
+                continue
+
+            if existing.is_present:
+                if _norm(new_value) == _norm(existing.value):
+                    continue  # same value restated - no change
+                if new_status == FieldStatus.VALIDATED:
+                    # a genuine correction: the most recent explicit value wins
+                    result[ef.key] = FieldOutcome(
+                        ef.key, new_value, new_status, None, ef.confidence, changed=True
+                    )
+                # else: new value is invalid - keep the existing valid one
+                continue
+
+            result[ef.key] = FieldOutcome(
+                ef.key, new_value, new_status, vr.error, ef.confidence, changed=True
+            )
+
+        return result
+
+    @staticmethod
+    def _classify_fields(
+        specs: list[FieldSpec], current: dict[str, FieldOutcome]
+    ) -> tuple[list[FieldSpec], list[FieldSpec]]:
+        missing: list[FieldSpec] = []
+        invalid: list[FieldSpec] = []
+        for spec in specs:
+            fo = current.get(spec.key)
+            if fo is not None and fo.status == FieldStatus.INVALID:
+                invalid.append(spec)
+            elif spec.required and (fo is None or not fo.is_present):
+                missing.append(spec)
+        return missing, invalid
+
+    async def _clarify_type(
+        self, state: ConversationState, outcome: EngineOutcome
+    ) -> EngineOutcome:
+        outcome.complaint_type = None
+        outcome.awaiting_clarification = True
+        outcome.next_status = ConversationStatus.OPEN
+        outcome.fields = [FieldOutcome(f.key, f.value, f.status) for f in state.collected]
+        outcome.reply = await self._ai.compose_reply(
+            ReplyRequest(
+                kind=ReplyKind.CLARIFY,
+                complaint_label="your issue",
+                customer_name=state.customer_name,
+                guidance=(
+                    "Ask whether the problem concerns a withdrawal, a deposit, or another "
+                    "issue, and what went wrong."
+                ),
+            )
+        )
+        return outcome
+
+    async def _clarify_vague(
+        self,
+        state: ConversationState,
+        schema: ComplaintSchema,
+        current: dict[str, FieldOutcome],
+        summary: str,
+        outcome: EngineOutcome,
+    ) -> EngineOutcome:
+        outcome.concise_description = summary or None
+        outcome.fields = list(current.values())
+        outcome.missing_fields = [
+            s for s in schema.fields_for() if s.key == _PROBLEM_DESCRIPTION_KEY
+        ]
+        outcome.awaiting_clarification = True
+        outcome.next_status = ConversationStatus.COLLECTING_INFO
+        outcome.reply = await self._ai.compose_reply(
+            ReplyRequest(
+                kind=ReplyKind.CLARIFY,
+                complaint_label=schema.label,
+                customer_name=state.customer_name,
+                guidance=(
+                    "Ask the customer to describe what the problem is, what they were "
+                    "trying to do, and what went wrong."
+                ),
+            )
+        )
+        return outcome
 
 
-def _is_required(specs: list[FieldSpec], key: str) -> bool:
-    return any(s.key == key and s.required for s in specs)
-
-
-def _format_validation_hints(errors: list) -> str:
-    if not errors:
-        return ""
-    lines = [f"- {e.key}: {e.error}" for e in errors]
-    return "Some details need correcting:\n" + "\n".join(lines)
+def _norm(value: str | None) -> str:
+    return (value or "").strip().lower()

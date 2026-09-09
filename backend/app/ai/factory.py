@@ -21,8 +21,10 @@ def get_ai_provider() -> AIProvider:
 
     if provider == "ollama":
         from app.ai.providers.ollama import OllamaAIProvider
+        from app.ai.providers.rule_based import RuleBasedAIProvider
 
-        return OllamaAIProvider()
+        fallback = RuleBasedAIProvider() if settings.ollama_fallback_to_rule_based else None
+        return OllamaAIProvider(fallback=fallback)
 
     raise ValueError(
         f"Unknown AI_PROVIDER '{settings.ai_provider}'. Expected 'rule_based' or 'ollama'."

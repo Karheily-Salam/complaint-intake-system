@@ -71,7 +71,7 @@ npm run dev                  # http://localhost:5173  (proxies /api to :8000)
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe -m pytest
+../.venv/Scripts/python.exe -m pytest   # schema, multi-turn flows, engine merge, provider fallback
 ```
 
 ## Using a local LLM later
@@ -84,4 +84,6 @@ AI_PROVIDER=ollama
 OLLAMA_MODEL=llama3.1
 ```
 
-No other code changes required.
+No other code changes required. If Ollama is not reachable the provider falls
+back to `rule_based` (set `OLLAMA_FALLBACK_TO_RULE_BASED=false` to get a hard
+error instead). `GET /api/v1/health` reports `ai_provider_available`.

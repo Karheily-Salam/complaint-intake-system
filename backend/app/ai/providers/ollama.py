@@ -1,25 +1,41 @@
 """Local LLM provider backed by Ollama (http://localhost:11434).
 
-No paid API, no external network - Ollama runs on the developer's machine. This
-class is fully wired but only selected when ``AI_PROVIDER=ollama``.
+No paid API, no external network - Ollama runs on the developer's machine. Selected
+with ``AI_PROVIDER=ollama``.
 
-Prompts are loaded from ``app/conversation/prompts/`` as Jinja templates. They
-receive schema-derived data (labels, hints) and contain no business rules.
+Guarantees / behaviour:
+- Structured, typed Pydantic inputs and outputs (same contract as every provider).
+- Field definitions are supplied dynamically from the complaint schema registry;
+  nothing about withdrawal/deposit/other is hard-coded here.
+- The model is instructed to extract only information explicitly present in the
+  customer's message and never to invent values; results are additionally
+  filtered against the allowed field keys and dropped if empty.
+- Long, unstructured messages are passed through in full (no truncation).
+- If Ollama is unreachable it either falls back to the rule-based provider
+  (``OLLAMA_FALLBACK_TO_RULE_BASED=true``, the default) or raises
+  :class:`AIProviderError` with a clear message.
+
+The conversation engine depends only on :class:`AIProvider`; it never imports
+this module.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.ai.base import (
     AIProvider,
+    AIProviderError,
     Classification,
     ExtractedField,
     ExtractionResult,
     ReplyDraft,
+    ReplyRequest,
     TypeOption,
 )
 from app.core.config import settings
@@ -27,6 +43,10 @@ from app.core.logging import get_logger
 from app.domain.complaint_schemas.spec import FieldSpec
 
 logger = get_logger(__name__)
+
+T = TypeVar("T")
+
+_TRANSPORT_ERRORS = (httpx.HTTPError, OSError)
 
 
 class OllamaAIProvider(AIProvider):
@@ -37,10 +57,12 @@ class OllamaAIProvider(AIProvider):
         base_url: str | None = None,
         model: str | None = None,
         timeout: int | None = None,
+        fallback: AIProvider | None = None,
     ) -> None:
         self._base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self._model = model or settings.ollama_model
         self._timeout = timeout or settings.ollama_timeout_seconds
+        self._fallback = fallback
         self._jinja = Environment(
             loader=FileSystemLoader(str(settings.prompt_template_dir)),
             autoescape=select_autoescape(enabled_extensions=()),
@@ -48,18 +70,29 @@ class OllamaAIProvider(AIProvider):
             lstrip_blocks=True,
         )
 
+    async def available(self) -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{self._base_url}/api/tags")
+                return resp.status_code == 200
+        except _TRANSPORT_ERRORS:
+            return False
+
     async def classify(self, message: str, options: list[TypeOption]) -> Classification:
-        prompt = self._render(
-            "classify.jinja",
-            message=message,
-            options=[o.model_dump() for o in options],
-        )
-        data = await self._generate_json(prompt)
-        return Classification(
-            type=data.get("type"),
-            confidence=float(data.get("confidence", 0.0) or 0.0),
-            rationale=str(data.get("rationale", "")),
-        )
+        async def primary() -> Classification:
+            prompt = self._render(
+                "classify.jinja", message=message, options=[o.model_dump() for o in options]
+            )
+            data = await self._generate_json(prompt)
+            allowed = {o.type for o in options}
+            ctype = data.get("type")
+            return Classification(
+                type=ctype if ctype in allowed else None,
+                confidence=_as_float(data.get("confidence"), 0.0),
+                rationale=str(data.get("rationale", "")),
+            )
+
+        return await self._call("classify", primary, lambda fb: fb.classify(message, options))
 
     async def extract(
         self,
@@ -67,51 +100,85 @@ class OllamaAIProvider(AIProvider):
         specs: list[FieldSpec],
         known: dict[str, str] | None = None,
     ) -> ExtractionResult:
-        prompt = self._render(
-            "extract.jinja",
-            message=message,
-            fields=[s.model_dump() for s in specs],
-            known=known or {},
-        )
-        data = await self._generate_json(prompt)
-        raw_fields = data.get("fields", []) if isinstance(data, dict) else []
-        fields: list[ExtractedField] = []
-        valid_keys = {s.key for s in specs}
-        for item in raw_fields:
-            key = item.get("key")
-            value = item.get("value")
-            if key in valid_keys and value:
-                fields.append(
+        known = known or {}
+
+        async def primary() -> ExtractionResult:
+            prompt = self._render(
+                "extract.jinja",
+                message=message,
+                fields=[_field_view(s) for s in specs],
+                known=known,
+            )
+            data = await self._generate_json(prompt)
+            allowed = {s.key for s in specs}
+            out: list[ExtractedField] = []
+            for item in data.get("fields", []) if isinstance(data, dict) else []:
+                if not isinstance(item, dict):
+                    continue
+                key = item.get("key")
+                value = item.get("value")
+                if key not in allowed or value is None:
+                    continue
+                text = str(value).strip()
+                if not text:
+                    continue
+                # Ignore a re-statement of an already-known value (not a correction).
+                if known.get(key, "").strip().lower() == text.lower():
+                    continue
+                out.append(
                     ExtractedField(
                         key=key,
-                        value=str(value).strip(),
-                        confidence=float(item.get("confidence", 0.5) or 0.5),
+                        value=text,
+                        confidence=_as_float(item.get("confidence"), 0.5),
                     )
                 )
-        return ExtractionResult(fields=fields)
+            return ExtractionResult(fields=out)
+
+        return await self._call(
+            "extract", primary, lambda fb: fb.extract(message, specs, known)
+        )
 
     async def summarize(self, transcript: list[str]) -> str:
-        prompt = self._render("summarize.jinja", transcript=transcript)
-        return (await self._generate_text(prompt)).strip()
+        async def primary() -> str:
+            prompt = self._render("summarize.jinja", transcript=transcript)
+            return (await self._generate_text(prompt)).strip()
 
-    async def compose_reply(
+        return await self._call("summarize", primary, lambda fb: fb.summarize(transcript))
+
+    async def compose_reply(self, request: ReplyRequest) -> ReplyDraft:
+        async def primary() -> ReplyDraft:
+            prompt = self._render(
+                "reply.jinja",
+                kind=request.kind.value,
+                complaint_label=request.complaint_label,
+                customer_name=request.customer_name,
+                missing_fields=[_field_view(s) for s in request.missing_fields],
+                invalid_fields=[f.model_dump() for f in request.invalid_fields],
+                guidance=request.guidance,
+                ticket_reference=request.ticket_reference,
+            )
+            return ReplyDraft(body=(await self._generate_text(prompt)).strip())
+
+        return await self._call("compose_reply", primary, lambda fb: fb.compose_reply(request))
+
+    # ---- internals ----
+
+    async def _call(
         self,
-        missing: list[FieldSpec],
-        *,
-        complaint_label: str,
-        customer_name: str | None = None,
-        extra_context: str = "",
-    ) -> ReplyDraft:
-        prompt = self._render(
-            "compose_reply.jinja",
-            missing=[s.model_dump() for s in missing],
-            complaint_label=complaint_label,
-            customer_name=customer_name,
-            extra_context=extra_context,
-        )
-        return ReplyDraft(body=(await self._generate_text(prompt)).strip())
-
-    # ---- transport ----
+        op: str,
+        primary: Callable[[], Awaitable[T]],
+        fallback: Callable[[AIProvider], Awaitable[T]],
+    ) -> T:
+        try:
+            return await primary()
+        except _TRANSPORT_ERRORS as exc:
+            if self._fallback is not None:
+                logger.warning("Ollama '%s' failed (%s); using rule-based fallback.", op, exc)
+                return await fallback(self._fallback)
+            raise AIProviderError(
+                f"Ollama provider unavailable during '{op}': {exc}. "
+                f"Is Ollama running at {self._base_url}?"
+            ) from exc
 
     def _render(self, template_name: str, **ctx: object) -> str:
         return self._jinja.get_template(template_name).render(**ctx)
@@ -124,18 +191,35 @@ class OllamaAIProvider(AIProvider):
             return resp.json().get("response", "")
 
     async def _generate_json(self, prompt: str) -> dict:
-        payload = {
-            "model": self._model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-        }
+        payload = {"model": self._model, "prompt": prompt, "stream": False, "format": "json"}
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(f"{self._base_url}/api/generate", json=payload)
             resp.raise_for_status()
             text = resp.json().get("response", "{}")
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else {}
         except json.JSONDecodeError:
             logger.warning("Ollama returned non-JSON response: %s", text[:200])
             return {}
+
+
+def _field_view(spec: FieldSpec) -> dict:
+    """Schema-derived, prompt-friendly description of one field."""
+    return {
+        "key": spec.key,
+        "label": spec.label,
+        "type": spec.type.value,
+        "required": spec.required,
+        "description": spec.description,
+        "hint": spec.extraction_hint or spec.description,
+        "example": spec.example,
+        "allowed_values": spec.validation.enum_values,
+    }
+
+
+def _as_float(value: object, default: float) -> float:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default

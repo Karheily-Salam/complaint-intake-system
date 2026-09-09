@@ -47,7 +47,121 @@ common_fields:
         - "%d/%m/%Y"
         - "%d.%m.%Y"
 
-# Method-specific fields. Add a new method by adding an entry here (or by dropping
-# a file in definitions/deposit_methods/ and extending the loader) - no engine changes.
-method_selector_label: How did you make the deposit?
-methods: []
+# The enum field whose value selects a deposit method. Always required. Its
+# allowed values are derived from the `methods` keys below (no need to repeat them).
+method_field:
+  key: deposit_method
+  label: Deposit method
+  type: enum
+  required: true
+  description: The method the customer used to make the deposit.
+  extraction_hint: >
+    How the money was sent. Map the customer's wording onto one of:
+    bank_transfer (bank/wire/SEPA/SWIFT transfer),
+    crypto (cryptocurrency / on-chain transfer),
+    card (debit or credit card payment),
+    e_wallet (PayPal, Skrill, Neteller and similar).
+
+# Add or change methods here - the conversation engine reads them dynamically and
+# never needs modification. Each method's `additional_fields` become required only
+# once that method is known.
+methods:
+  - key: bank_transfer
+    label: Bank transfer
+    description: SEPA / SWIFT / domestic bank or wire transfer.
+    aliases: ["bank transfer", "wire transfer", "wire", "sepa", "swift", "bank", "iban"]
+    additional_fields:
+      - key: sender_bank_name
+        label: Sending bank name
+        type: string
+        required: true
+        description: The bank the transfer was sent from.
+        extraction_hint: Name of the bank used to send the money.
+      - key: sender_iban_or_account
+        label: Sender IBAN or account number
+        type: string
+        required: true
+        description: The IBAN or account number the funds were sent from (may be masked).
+        extraction_hint: An IBAN or bank account number, possibly partly masked.
+      - key: bank_reference
+        label: Transfer reference
+        type: string
+        required: true
+        description: The payment reference or description used on the transfer.
+        extraction_hint: The reference / description text attached to the bank transfer.
+
+  - key: crypto
+    label: Crypto transfer
+    description: On-chain cryptocurrency transfer.
+    aliases: ["crypto", "cryptocurrency", "bitcoin", "btc", "ethereum", "eth", "usdt", "usdc", "on-chain", "on chain", "blockchain", "wallet transfer"]
+    additional_fields:
+      - key: crypto_network
+        label: Network / chain
+        type: string
+        required: true
+        description: The blockchain network used (e.g. Bitcoin, Ethereum, Tron).
+        extraction_hint: The chain or network name, e.g. BTC, ETH, ERC-20, TRC-20.
+      - key: crypto_tx_hash
+        label: Transaction hash
+        type: string
+        required: true
+        description: The on-chain transaction hash / ID of the transfer.
+        extraction_hint: A long hexadecimal transaction hash, optionally 0x-prefixed.
+        validation:
+          pattern: "(?i)^(0x)?[a-f0-9]{16,90}$"
+      - key: sending_wallet_address
+        label: Sending wallet address
+        type: string
+        required: true
+        description: The wallet address the funds were sent from.
+        extraction_hint: A cryptocurrency wallet address.
+
+  - key: card
+    label: Card payment
+    description: Debit or credit card deposit.
+    aliases: ["card", "debit card", "credit card", "visa", "mastercard", "maestro", "card payment"]
+    additional_fields:
+      - key: card_last_four
+        label: Card last 4 digits
+        type: string
+        required: true
+        description: The last four digits of the card used.
+        extraction_hint: Exactly four digits, often written as "ending 1234" or "**** 1234".
+        validation:
+          pattern: "^[0-9]{4}$"
+      - key: card_auth_code
+        label: Authorization code
+        type: string
+        required: true
+        description: The authorization / approval code shown for the payment.
+        extraction_hint: A short alphanumeric authorization or approval code.
+      - key: payment_processor_reference
+        label: Payment processor reference
+        type: string
+        required: true
+        description: The reference from the card payment processor.
+        extraction_hint: A transaction/order reference from the payment processor.
+
+  - key: e_wallet
+    label: E-wallet
+    description: Deposit via a third-party wallet such as PayPal, Skrill or Neteller.
+    aliases: ["e-wallet", "ewallet", "e wallet", "wallet", "paypal", "skrill", "neteller", "payoneer"]
+    additional_fields:
+      - key: wallet_provider
+        label: Wallet provider
+        type: string
+        required: true
+        description: The e-wallet service used (PayPal, Skrill, Neteller, ...).
+        extraction_hint: The name of the e-wallet provider.
+      - key: wallet_account_reference
+        label: Wallet account email or ID
+        type: string
+        required: true
+        description: The email or account ID on the e-wallet.
+        extraction_hint: An email address or account identifier for the e-wallet.
+      - key: wallet_transaction_id
+        label: Wallet transaction ID
+        type: string
+        required: true
+        description: The transaction ID reported by the e-wallet.
+        extraction_hint: A transaction / reference ID from the e-wallet provider.

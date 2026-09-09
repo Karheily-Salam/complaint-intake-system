@@ -75,7 +75,13 @@ export function MailboxSimulator() {
           <>
             <p>
               <span className="badge">type: {complaint?.type ?? "unclassified"}</span>{" "}
+              {complaint?.method_key && (
+                <span className="badge">method: {complaint.method_key}</span>
+              )}{" "}
               <span className="badge">status: {result.conversation.status}</span>{" "}
+              {result.awaiting_clarification && (
+                <span className="badge pill-missing">needs clarification</span>
+              )}
               {result.is_complete && <span className="badge" style={{ color: "var(--ok)" }}>complete</span>}
               {result.ticket_reference && (
                 <span className="badge" style={{ color: "var(--ok)" }}>
@@ -99,6 +105,9 @@ export function MailboxSimulator() {
               <p className="empty">Nothing extracted yet.</p>
             )}
 
+            {result.invalid_fields.length > 0 && (
+              <p className="pill-missing">Needs correcting: {result.invalid_fields.join(", ")}</p>
+            )}
             {result.missing_fields.length > 0 && (
               <p className="pill-missing">Still needed: {result.missing_fields.join(", ")}</p>
             )}

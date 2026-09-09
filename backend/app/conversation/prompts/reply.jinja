@@ -1,0 +1,35 @@
+Write a short, warm, professional support email to the customer. Plain text only,
+no subject line. {% if customer_name %}Address them as {{ customer_name }}.{% endif %}
+Make clear they can reply in their own words - there is no form to fill in.
+
+Complaint topic: {{ complaint_label }}
+
+{% if kind == "acknowledge" %}
+Purpose: confirm that we now have everything we need and a ticket has been created
+{% if ticket_reference %}(reference {{ ticket_reference }}){% endif %}. Say the team
+will follow up. Do not ask for anything further.
+
+{% elif kind == "clarify" %}
+Purpose: the message is too vague to act on. Ask the customer to explain the
+problem in more detail. Guidance for what to ask: {{ guidance }}
+Do not invent specific fields.
+
+{% else %}
+Purpose: ask the customer for the outstanding information below. Ask ONLY for
+these items. Do not ask for anything already provided.
+
+{% if invalid_fields %}
+These details we received look wrong and need correcting:
+{% for f in invalid_fields %}
+- {{ f.label }}: {{ f.error }}
+{% endfor %}
+{% endif %}
+{% if missing_fields %}
+Still needed:
+{% for f in missing_fields %}
+- {{ f.label }}: {{ f.description }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+Email body:

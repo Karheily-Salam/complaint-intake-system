@@ -46,7 +46,11 @@ export interface ConversationOut {
 export interface IntakeResult {
   conversation: ConversationOut;
   reply_body: string | null;
+  complaint_type: ComplaintType | null;
+  method_key: string | null;
   missing_fields: string[];
+  invalid_fields: string[];
+  awaiting_clarification: boolean;
   is_complete: boolean;
   ticket_reference: string | null;
 }

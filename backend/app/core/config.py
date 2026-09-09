@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1"
     ollama_timeout_seconds: int = 60
+    # When AI_PROVIDER=ollama and Ollama is unreachable: if true, transparently
+    # fall back to the rule-based provider; if false, raise a clear provider error.
+    ollama_fallback_to_rule_based: bool = True
+
+    # ---- Conversation engine ----
+    # Below this classifier confidence the engine treats the complaint type as
+    # not yet known and asks the customer to clarify.
+    min_classification_confidence: float = 0.45
 
     # ---- Email provider ----
     email_provider: str = "mock"  # mock (only mock implemented in the prototype)

@@ -7,6 +7,11 @@ description: >
 
 open_schema: true
 
+# The summarised problem description must contain at least this many words for the
+# engine to accept it and create a ticket. Shorter/vaguer messages trigger a
+# clarification question instead of a useless ticket.
+min_description_words: 6
+
 # Optional fields the engine will opportunistically capture if present, but will
 # not block the conversation on. Promote these to required (or add new ones) as
 # the "other" taxonomy is defined.

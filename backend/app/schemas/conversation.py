@@ -52,6 +52,10 @@ class ConversationOut(ORMModel):
 class IntakeResult(BaseModel):
     conversation: ConversationOut
     reply_body: str | None
+    complaint_type: str | None = None
+    method_key: str | None = None
     missing_fields: list[str]
+    invalid_fields: list[str] = []
+    awaiting_clarification: bool = False
     is_complete: bool
     ticket_reference: str | None = None

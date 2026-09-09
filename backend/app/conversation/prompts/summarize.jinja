@@ -1,8 +1,11 @@
 Write a concise, self-contained problem description (2-3 sentences) for a support
-employee, based on the customer's messages below. State the problem and any
-relevant specifics. Do not add greetings, apologies, or next steps.
+employee, based only on the customer's messages below. State what the problem is
+and any concrete specifics (amounts, dates, error messages, what was tried).
+Do not add greetings, apologies, speculation, or next steps.
 
-Customer messages:
+If the messages do not actually describe a problem, respond with an empty string.
+
+Customer messages (oldest first):
 {% for line in transcript %}
 - {{ line }}
 {% endfor %}

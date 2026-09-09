@@ -1,25 +1,31 @@
-Extract only the information that is explicitly present in the customer's message.
-Do not guess or invent values. If a field is not clearly stated, omit it.
+You extract structured information from a customer's support message.
+
+Extract a value for a field ONLY when the customer's message explicitly states it.
+Never guess, infer, or invent. If a field is not clearly present, omit it.
+Copy values as the customer wrote them (trim surrounding whitespace only).
 
 Fields to look for:
 {% for f in fields %}
 - key: {{ f.key }}
   label: {{ f.label }}
   type: {{ f.type }}
-  what to look for: {{ f.extraction_hint or f.description }}
+  what to look for: {{ f.hint }}
+{% if f.allowed_values %}  allowed values (return one of these keys): {{ f.allowed_values | join(", ") }}
+{% endif %}
 {% endfor %}
 
-Already known (do not re-extract these):
+Already collected and validated (do NOT return these again unless the customer is
+correcting them with a different value):
 {% for k, v in known.items() %}
 - {{ k }}: {{ v }}
 {% else %}
 - (none)
 {% endfor %}
 
-Customer message:
-"""
+Customer message (may be long and unstructured):
+\"\"\"
 {{ message }}
-"""
+\"\"\"
 
 Respond with JSON only:
-{"fields": [{"key": "<key>", "value": "<value>", "confidence": <0-1>}]}
+{"fields": [{"key": "<field key>", "value": "<verbatim value>", "confidence": <0-1>}]}

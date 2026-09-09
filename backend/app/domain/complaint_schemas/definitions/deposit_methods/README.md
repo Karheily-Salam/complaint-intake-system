@@ -1,37 +1,41 @@
 # Deposit methods
 
-Deposit complaints share the `common_fields` defined in `../deposit.yaml`, but
-each deposit **method** can require additional fields.
+Deposit complaints share the `common_fields` defined in `../deposit.yaml` plus the
+`method_field` (`deposit_method`). Each **method** listed under `methods:` then
+contributes its own `additional_fields`, which become required **only after** the
+conversation engine has determined which method the customer used.
 
-## Adding a method (no code changes)
+## Adding or changing a method (no code changes)
 
 Add an entry under `methods:` in `../deposit.yaml`:
 
 ```yaml
 methods:
-  - key: bank_transfer
-    label: Bank transfer
-    description: SEPA / SWIFT / domestic bank transfer.
+  - key: giro
+    label: Giro / standing order
+    description: Recurring domestic giro payment.
+    aliases: ["giro", "standing order", "direct debit"]
     additional_fields:
-      - key: bank_reference
-        label: Bank reference / IBAN
+      - key: giro_mandate_reference
+        label: Mandate reference
         type: string
         required: true
-        description: The IBAN or bank reference used for the transfer.
-        extraction_hint: An IBAN or bank transfer reference code.
-      - key: amount_sent
-        label: Amount sent
-        type: number
-        required: true
-        description: The amount the customer transferred.
+        description: The giro mandate reference.
+        extraction_hint: A mandate / mandate reference identifier.
 ```
 
-The conversation engine reads these through `ComplaintSchemaRegistry` and will:
+- `key` is added automatically to `deposit_method`'s allowed enum values.
+- `aliases` let a provider map free-text wording ("standing order", "direct
+  debit") onto the method key. Keep synonyms here, not in Python.
+- `additional_fields` use the same `FieldSpec` shape as `common_fields`.
 
-- ask the customer which method they used (using `method_selector_label`),
-- merge `common_fields` + the selected method's `additional_fields`,
-- ask only for whichever of those are still missing.
+The conversation engine reads all of this through `ComplaintSchemaRegistry` and:
 
-A follow-up task may split each method into its own file in this directory and
-extend `ComplaintSchemaRegistry.from_directory` to merge them; the schema shape
-stays identical.
+- extracts `deposit_method` from whichever message reveals it (possibly not the
+  first),
+- once known, folds in that method's `additional_fields`,
+- asks only for whichever required fields are still missing or invalid,
+- creates the ticket the moment the deterministic required-field set is satisfied.
+
+A later refactor may move each method into its own file here and merge them in
+`ComplaintSchemaRegistry.from_directory`; the `FieldSpec` shape stays identical.

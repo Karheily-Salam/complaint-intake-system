@@ -12,5 +12,6 @@ class HealthResponse(BaseModel):
     app: str
     environment: str
     ai_provider: str
+    ai_provider_available: bool = True
     email_provider: str
     complaint_types: list[str]
