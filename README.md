@@ -48,16 +48,37 @@ cd backend
 # 2. configure
 cp .env.example .env
 
-# 3. create the database schema
-../.venv/Scripts/python.exe -m alembic upgrade head
-# (quick alternative for the prototype: ../.venv/Scripts/python.exe -m scripts.reset_db)
-
-# 4. start the API
+# 3. start the API - pending Alembic migrations are applied automatically on
+#    startup for this local prototype (RUN_MIGRATIONS_ON_STARTUP=true), so a
+#    fresh clone needs no separate init step.
 ../.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
 API docs at http://localhost:8000/docs — health at
 http://localhost:8000/api/v1/health.
+
+The SQLite file path (`DATABASE_URL` in `backend/.env`) is always resolved
+relative to `backend/`, never to whatever directory you happen to run the
+command from — so `alembic`, `uvicorn`, `pytest`, and `scripts.reset_db` all
+share the exact same database file regardless of your current shell location.
+
+If you'd rather not rely on automatic startup migrations (e.g. to mirror a
+production deploy step, or after pulling new migrations while the app isn't
+running), run them explicitly instead:
+
+```bash
+../.venv/Scripts/python.exe -m alembic upgrade head
+```
+
+To wipe the local database and rebuild it from the migrations from scratch:
+
+```bash
+../.venv/Scripts/python.exe -m scripts.reset_db
+```
+
+For a real deployment, set `RUN_MIGRATIONS_ON_STARTUP=false` and run
+`alembic upgrade head` as an explicit release step instead of on every
+process start.
 
 ## Run the frontend
 

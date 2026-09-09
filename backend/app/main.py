@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
+from app.core.migrations import run_migrations
 from app.domain.complaint_schemas.registry import get_registry
 
 logger = get_logger(__name__)
@@ -18,6 +19,8 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
+    if settings.run_migrations_on_startup:
+        run_migrations()
     # Fail fast if the complaint schema config is invalid.
     registry = get_registry()
     logger.info("Loaded complaint schemas: %s", ", ".join(registry.types()))

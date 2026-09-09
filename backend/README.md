@@ -6,7 +6,7 @@ FastAPI + Pydantic + SQLAlchemy 2.0 + SQLite + Alembic.
 
 | Path | Responsibility |
 |---|---|
-| `app/core/` | config (env-driven), DB engine/session, logging |
+| `app/core/` | config (env-driven), DB engine/session, logging, Alembic runner (`migrations.py`), sqlite path resolution (`db_path.py`) |
 | `app/db/models/` | SQLAlchemy ORM models |
 | `app/repositories/` | data-access layer (no business logic) |
 | `app/schemas/` | Pydantic request/response DTOs |
@@ -78,3 +78,32 @@ could be layered in later without touching the engine — see
 ../.venv/Scripts/python.exe -m alembic revision --autogenerate -m "describe change"
 ../.venv/Scripts/python.exe -m alembic upgrade head
 ```
+
+## Database initialization
+
+Alembic is the only schema-authoring mechanism - there is no
+`Base.metadata.create_all()` or hand-written DDL anywhere in `app/`.
+
+- **App startup**: `app/main.py`'s `lifespan` calls `app.core.migrations.run_migrations()`
+  (a thin wrapper around `alembic.command.upgrade(cfg, "head")`) whenever
+  `settings.run_migrations_on_startup` is true (the default for this
+  prototype). This is what makes a fresh clone "just work" - no manual
+  `alembic upgrade head` required before the first `uvicorn` run.
+- **Explicit migrations**: `../.venv/Scripts/python.exe -m alembic upgrade head`
+  still works as always, and is what a real deployment should run as its
+  release step, with `RUN_MIGRATIONS_ON_STARTUP=false` in that environment so
+  the running process never tries to migrate the schema itself.
+- **Reset for a clean prototype DB**: `../.venv/Scripts/python.exe -m scripts.reset_db`
+  deletes the current SQLite file (if any) and re-applies every migration
+  from scratch via Alembic.
+- **Path resolution**: `DATABASE_URL` may be given as a relative
+  `sqlite:///./complaint_intake.db`; `app.core.db_path.anchor_sqlite_url`
+  rewrites it to an absolute path under `backend/` the moment settings are
+  loaded, so the app, Alembic (`alembic/env.py` reads the same `settings`),
+  tests, and `scripts.reset_db` are guaranteed to use the identical physical
+  file no matter which directory a command is run from. Already-absolute
+  URLs (including Postgres URLs in production) are left untouched.
+
+See `tests/test_fresh_database_startup.py` for the regression test covering
+this end to end (fresh SQLite file, real app startup, `POST /api/v1/inbox`
+through to a created ticket).

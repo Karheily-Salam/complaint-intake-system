@@ -9,8 +9,10 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.db_path import anchor_sqlite_url
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -31,6 +33,13 @@ class Settings(BaseSettings):
     # ---- Database ----
     database_url: str = "sqlite:///./complaint_intake.db"
     db_echo: bool = False
+    # Local-prototype convenience: apply pending Alembic migrations automatically
+    # when the FastAPI app starts, so a fresh clone works without a separate
+    # manual step. This only ever calls `alembic upgrade head` programmatically -
+    # Alembic remains the sole schema-authoring mechanism (see app.core.migrations).
+    # For a real deployment set this to false and run migrations as an explicit
+    # release step instead.
+    run_migrations_on_startup: bool = True
 
     # ---- CORS ----
     backend_cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
@@ -63,6 +72,16 @@ class Settings(BaseSettings):
     @property
     def prompt_template_dir(self) -> Path:
         return BACKEND_DIR / "app" / "conversation" / "prompts"
+
+    @model_validator(mode="after")
+    def _anchor_database_url(self) -> Settings:
+        # Runs for every Settings() instance regardless of whether database_url
+        # came from the default, backend/.env, or an environment variable - a
+        # relative sqlite URL otherwise resolves against the process's current
+        # working directory, which is what let the app and Alembic silently
+        # point at two different SQLite files.
+        self.database_url = anchor_sqlite_url(self.database_url, BACKEND_DIR)
+        return self
 
 
 @lru_cache
