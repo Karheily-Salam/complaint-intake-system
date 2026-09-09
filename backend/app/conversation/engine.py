@@ -35,6 +35,7 @@ from app.domain.validation import validate_field
 _PROBLEM_DESCRIPTION_KEY = "problem_description"
 # Purely for denormalisation onto the ticket / UI - the engine does not branch on it.
 _DEPOSIT_METHOD_KEY = "deposit_method"
+_DEFAULT_LANGUAGE = "en"
 
 
 class ConversationEngine:
@@ -44,6 +45,7 @@ class ConversationEngine:
 
     async def advance(self, state: ConversationState) -> EngineOutcome:
         outcome = EngineOutcome(complaint_type=state.complaint_type)
+        outcome.language_code = await self._resolve_language(state)
 
         # ---- 1. classify the complaint type (only while unknown) ----
         complaint_type = state.complaint_type
@@ -111,6 +113,7 @@ class ConversationEngine:
                     kind=ReplyKind.ACKNOWLEDGE,
                     complaint_label=schema.label,
                     customer_name=state.customer_name,
+                    language_code=outcome.language_code,
                 )
             )
             return outcome
@@ -121,6 +124,7 @@ class ConversationEngine:
                 kind=ReplyKind.ASK,
                 complaint_label=schema.label,
                 customer_name=state.customer_name,
+                language_code=outcome.language_code,
                 missing_fields=missing,
                 invalid_fields=[
                     InvalidField(
@@ -135,6 +139,22 @@ class ConversationEngine:
         return outcome
 
     # ------------------------------------------------------------------ helpers
+
+    async def _resolve_language(self, state: ConversationState) -> str:
+        """Decide which language this turn's reply should be written in.
+
+        Policy: prefer the language of the customer's latest message; if that
+        message carries no reliable language signal (e.g. it is only numbers
+        or a stray word), keep the conversation's previously known language
+        instead of guessing. A brand new conversation with no signal falls
+        back to English. The resolved value is always what gets persisted as
+        the conversation's language, so it remains the fallback for future
+        ambiguous turns.
+        """
+        detected = await self._ai.detect_language(state.latest_message)
+        if detected.code and detected.confidence >= settings.min_language_confidence:
+            return detected.code
+        return state.language_code or _DEFAULT_LANGUAGE
 
     async def _extract_and_merge(
         self,
@@ -209,6 +229,7 @@ class ConversationEngine:
                 kind=ReplyKind.CLARIFY,
                 complaint_label="your issue",
                 customer_name=state.customer_name,
+                language_code=outcome.language_code,
                 guidance=(
                     "Ask whether the problem concerns a withdrawal, a deposit, or another "
                     "issue, and what went wrong."
@@ -237,6 +258,7 @@ class ConversationEngine:
                 kind=ReplyKind.CLARIFY,
                 complaint_label=schema.label,
                 customer_name=state.customer_name,
+                language_code=outcome.language_code,
                 guidance=(
                     "Ask the customer to describe what the problem is, what they were "
                     "trying to do, and what went wrong."

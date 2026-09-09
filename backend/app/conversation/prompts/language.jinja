@@ -1,0 +1,16 @@
+Identify the natural language the customer's message is written in.
+
+Rules:
+- Respond with a lowercase ISO 639-1 language code (e.g. "en", "ru", "ar").
+- confidence is your certainty from 0 to 1.
+- If the message has no reliable language signal (e.g. only numbers, a single
+  word that could be any language, or is empty), return code null and a low
+  confidence.
+
+Customer message:
+\"\"\"
+{{ message }}
+\"\"\"
+
+Respond with JSON only:
+{"code": "<iso 639-1 code or null>", "confidence": <0-1>}

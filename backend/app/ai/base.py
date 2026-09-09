@@ -42,6 +42,19 @@ class Classification(BaseModel):
     rationale: str = ""
 
 
+class LanguageDetection(BaseModel):
+    """The natural language of a customer message.
+
+    ``code`` is a lowercase ISO 639-1 code (e.g. ``"en"``, ``"ru"``, ``"ar"``),
+    or ``None`` when the message carries no reliable language signal (e.g. it
+    is only numbers or symbols) - the engine then falls back to the
+    conversation's previously known language.
+    """
+
+    code: str | None = None
+    confidence: float = 0.0
+
+
 class ExtractedField(BaseModel):
     key: str
     value: str
@@ -81,6 +94,11 @@ class ReplyRequest(BaseModel):
     invalid_fields: list[InvalidField] = Field(default_factory=list)
     guidance: str = ""                 # free-text steer for CLARIFY messages
     ticket_reference: str | None = None
+    # ISO 639-1 code the engine has resolved for this turn (see
+    # ConversationEngine._resolve_language). The provider must write the reply
+    # body in this language - it never decides the language itself here, only
+    # how to phrase the content in it.
+    language_code: str = "en"
 
 
 class ReplyDraft(BaseModel):
@@ -126,5 +144,16 @@ class AIProvider(ABC):
         """
 
     @abstractmethod
+    async def detect_language(self, message: str) -> LanguageDetection:
+        """Detect the natural language ``message`` is written in.
+
+        This only *detects* - it never decides what language to reply in or
+        whether to switch; that policy (prefer the latest message, otherwise
+        keep the conversation's existing language) lives in the engine.
+        """
+
+    @abstractmethod
     async def compose_reply(self, request: ReplyRequest) -> ReplyDraft:
-        """Draft one customer-facing message for the given request."""
+        """Draft one customer-facing message for the given request, written in
+        ``request.language_code``.
+        """

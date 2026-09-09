@@ -37,6 +37,7 @@ export interface ConversationOut {
   channel: string;
   subject: string | null;
   status: string;
+  language_code: string | null;
   created_at: string;
   updated_at: string;
   complaint: ComplaintOut | null;

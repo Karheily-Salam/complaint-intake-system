@@ -33,6 +33,10 @@ class ConversationState:
     customer_name: str | None = None
     # Every inbound customer message, oldest first (used for summarisation).
     inbound_transcript: list[str] = field(default_factory=list)
+    # The conversation's language as of the *previous* turn (None for a brand
+    # new conversation). The engine falls back to this when the latest
+    # message has no reliable language signal of its own.
+    language_code: str | None = None
 
     def by_key(self) -> dict[str, CollectedField]:
         return {f.key: f for f in self.collected}
@@ -80,3 +84,6 @@ class EngineOutcome:
     awaiting_clarification: bool = False
     next_status: ConversationStatus = ConversationStatus.COLLECTING_INFO
     reply: ReplyDraft | None = None
+    # Resolved language for this turn (see ConversationEngine._resolve_language) -
+    # persisted onto the conversation so the next turn can fall back to it.
+    language_code: str = "en"

@@ -34,6 +34,7 @@ from app.ai.base import (
     Classification,
     ExtractedField,
     ExtractionResult,
+    LanguageDetection,
     ReplyDraft,
     ReplyRequest,
     TypeOption,
@@ -47,6 +48,15 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 _TRANSPORT_ERRORS = (httpx.HTTPError, OSError)
+
+# Presentation only, for the reply prompt ("write this in <name>") - the model
+# still receives the ISO code and can handle any language it recognizes even
+# if it isn't in this map (it falls back to the raw code as the name).
+_LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "ru": "Russian",
+    "ar": "Arabic",
+}
 
 
 class OllamaAIProvider(AIProvider):
@@ -145,6 +155,19 @@ class OllamaAIProvider(AIProvider):
 
         return await self._call("summarize", primary, lambda fb: fb.summarize(transcript))
 
+    async def detect_language(self, message: str) -> LanguageDetection:
+        async def primary() -> LanguageDetection:
+            prompt = self._render("language.jinja", message=message)
+            data = await self._generate_json(prompt)
+            code = data.get("code")
+            code = str(code).strip().lower() if code else None
+            confidence = _as_float(data.get("confidence"), 0.0)
+            return LanguageDetection(code=code or None, confidence=confidence)
+
+        return await self._call(
+            "detect_language", primary, lambda fb: fb.detect_language(message)
+        )
+
     async def compose_reply(self, request: ReplyRequest) -> ReplyDraft:
         async def primary() -> ReplyDraft:
             prompt = self._render(
@@ -156,6 +179,8 @@ class OllamaAIProvider(AIProvider):
                 invalid_fields=[f.model_dump() for f in request.invalid_fields],
                 guidance=request.guidance,
                 ticket_reference=request.ticket_reference,
+                language_code=request.language_code,
+                language_name=_LANGUAGE_NAMES.get(request.language_code, request.language_code),
             )
             return ReplyDraft(body=(await self._generate_text(prompt)).strip())
 

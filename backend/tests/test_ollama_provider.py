@@ -39,3 +39,11 @@ async def test_raises_clear_error_without_fallback():
     with pytest.raises(AIProviderError) as exc:
         await provider.classify("hello", _OPTIONS)
     assert "Ollama" in str(exc.value)
+
+
+async def test_detect_language_falls_back_to_rule_based_when_configured():
+    provider = OllamaAIProvider(
+        base_url=DEAD_URL, timeout=1, fallback=RuleBasedAIProvider()
+    )
+    result = await provider.detect_language("مرحبا، لدي مشكلة في سحب الأموال.")
+    assert result.code == "ar"  # answered by the fallback

@@ -18,6 +18,7 @@ from app.ai.base import (
     Classification,
     ExtractedField,
     ExtractionResult,
+    LanguageDetection,
     ReplyDraft,
     ReplyKind,
     ReplyRequest,
@@ -25,9 +26,24 @@ from app.ai.base import (
 )
 from app.domain.complaint_schemas.spec import FieldSpec, FieldType
 
+# Keyword lists are intentionally multilingual (English / Russian / Arabic) so
+# this offline provider can classify complaints regardless of the customer's
+# language - see app/ai/providers/rule_based.py::detect_language below for the
+# language side of the same requirement. This is classification vocabulary,
+# not a canned response: the reply text is still built from the engine's
+# dynamic ReplyRequest (kind, fields, ticket reference, ...), never a fixed
+# string keyed on language.
 _KEYWORDS: dict[str, tuple[str, ...]] = {
-    "withdrawal": ("withdraw", "withdrawal", "payout", "cash out", "cashout", "take out money"),
-    "deposit": ("deposit", "top up", "top-up", "fund my account", "add funds", "transfer in"),
+    "withdrawal": (
+        "withdraw", "withdrawal", "payout", "cash out", "cashout", "take out money",
+        "вывод", "вывести", "снятие", "снять",  # Russian
+        "سحب",  # Arabic
+    ),
+    "deposit": (
+        "deposit", "top up", "top-up", "fund my account", "add funds", "transfer in",
+        "депозит", "пополнение", "пополнить", "внести",  # Russian
+        "إيداع", "ايداع",  # Arabic
+    ),
 }
 
 # A message with no type keyword is only guessed as "other" when it is at least
@@ -70,6 +86,81 @@ _TXN_RE = re.compile(
     re.IGNORECASE,
 )
 _DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})\b")
+
+# ---- language detection --------------------------------------------------
+# Script-based heuristic: no model, no network - just Unicode block counting.
+# It reliably tells apart the three languages this offline provider supports
+# (English, Russian, Arabic) for the prototype. It is NOT a general-purpose
+# language identifier: any other Latin-script language (French, Spanish, ...)
+# will be classified as "en". Real multilingual detection is the Ollama
+# provider's job (see OllamaAIProvider.detect_language).
+_ARABIC_RE = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿ]")
+_CYRILLIC_RE = re.compile(r"[Ѐ-ӿ]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
+
+# ---- localized reply scaffolding ------------------------------------------
+# Only the surrounding natural-language scaffold is localized here - the
+# dynamic content (complaint label, field labels/descriptions from the YAML
+# schema, ticket reference, customer name) is never translated. This keeps
+# the provider free of any fixed "language -> full response" template while
+# still letting it produce a natural reply in the customer's language.
+_DEFAULT_LANGUAGE = "en"
+_PHRASES: dict[str, dict[str, str]] = {
+    "en": {
+        "greeting_named": "Hi {name},",
+        "greeting": "Hello,",
+        "ack": (
+            "Thank you - we now have everything we need about your {label} and have "
+            "created a ticket for our team{ref}. We will be in touch shortly."
+        ),
+        "ref_suffix": " (reference {ref})",
+        "ask_intro": "Thanks for getting in touch about your {label}.",
+        "invalid_intro": "Some details we received need correcting:",
+        "missing_intro": "To move this forward, could you please provide:",
+        "footer": "You can reply in your own words - no need for a form.",
+        "clarify_intro": (
+            "Thanks for contacting us. We would like to help but need a little more "
+            "detail first."
+        ),
+        "clarify_question": "Could you describe what happened and what went wrong?",
+    },
+    "ru": {
+        "greeting_named": "Здравствуйте, {name},",
+        "greeting": "Здравствуйте,",
+        "ack": (
+            "Спасибо - теперь у нас есть всё необходимое по вашему обращению "
+            "«{label}», и мы создали заявку для нашей команды{ref}. Мы свяжемся с "
+            "вами в ближайшее время."
+        ),
+        "ref_suffix": " (номер {ref})",
+        "ask_intro": "Спасибо, что обратились к нам по поводу «{label}».",
+        "invalid_intro": "Некоторые из полученных данных нужно исправить:",
+        "missing_intro": "Чтобы продолжить, пожалуйста, предоставьте:",
+        "footer": "Вы можете ответить своими словами - заполнять форму не нужно.",
+        "clarify_intro": (
+            "Спасибо, что написали нам. Мы хотим помочь, но сначала нужно немного "
+            "больше деталей."
+        ),
+        "clarify_question": "Не могли бы вы описать, что произошло и что пошло не так?",
+    },
+    "ar": {
+        "greeting_named": "مرحبًا {name}،",
+        "greeting": "مرحبًا،",
+        "ack": (
+            "شكرًا لك - أصبح لدينا الآن كل ما نحتاجه بخصوص {label}، وقد أنشأنا "
+            "تذكرة لفريقنا{ref}. سنتواصل معك قريبًا."
+        ),
+        "ref_suffix": " (المرجع {ref})",
+        "ask_intro": "شكرًا لتواصلك معنا بخصوص {label}.",
+        "invalid_intro": "بعض التفاصيل التي استلمناها تحتاج إلى تصحيح:",
+        "missing_intro": "لإتمام الأمر، يرجى تزويدنا بما يلي:",
+        "footer": "يمكنك الرد بأسلوبك الخاص - لا حاجة لتعبئة نموذج.",
+        "clarify_intro": (
+            "شكرًا لتواصلك معنا. نود مساعدتك، لكننا بحاجة إلى مزيد من التفاصيل أولاً."
+        ),
+        "clarify_question": "هل يمكنك وصف ما حدث وما الذي حدث بشكل خاطئ؟",
+    },
+}
 
 
 class RuleBasedAIProvider(AIProvider):
@@ -138,39 +229,71 @@ class RuleBasedAIProvider(AIProvider):
         joined = re.sub(r"\s+", " ", joined).strip()
         return (joined[:497] + "...") if len(joined) > 500 else joined
 
+    async def detect_language(self, message: str) -> LanguageDetection:
+        arabic = len(_ARABIC_RE.findall(message))
+        cyrillic = len(_CYRILLIC_RE.findall(message))
+        latin = len(_LATIN_RE.findall(message))
+
+        # Arabic/Cyrillic script is a strong, hard-to-fake signal that the
+        # customer is writing in that language - a message essentially never
+        # contains those characters otherwise. Plain Latin/ASCII text (email
+        # addresses, IDs, common support words like "user id") is
+        # comparatively weak evidence: it shows up in almost every message
+        # regardless of the customer's language (universal technical
+        # tokens), so it never outweighs an actual non-Latin script
+        # presence, however much of the message it makes up - a bilingual
+        # customer who writes mostly Arabic but pastes an English email
+        # address is still writing Arabic.
+        if arabic > 0 and arabic >= cyrillic:
+            return LanguageDetection(code="ar", confidence=min(0.75 + 0.03 * arabic, 0.99))
+        if cyrillic > 0:
+            return LanguageDetection(code="ru", confidence=min(0.75 + 0.03 * cyrillic, 0.99))
+        if latin > 0:
+            return LanguageDetection(
+                code=_DEFAULT_LANGUAGE, confidence=min(0.6 + 0.02 * latin, 0.99)
+            )
+        return LanguageDetection(code=None, confidence=0.0)
+
     async def compose_reply(self, request: ReplyRequest) -> ReplyDraft:
-        greeting = f"Hi {request.customer_name}," if request.customer_name else "Hello,"
+        p = _PHRASES.get(request.language_code, _PHRASES[_DEFAULT_LANGUAGE])
+        greeting = (
+            p["greeting_named"].format(name=request.customer_name)
+            if request.customer_name
+            else p["greeting"]
+        )
         label = request.complaint_label.lower()
 
         if request.kind == ReplyKind.ACKNOWLEDGE:
-            ref = f" (reference {request.ticket_reference})" if request.ticket_reference else ""
-            body = (
-                f"{greeting}\n\nThank you - we now have everything we need about your "
-                f"{label} and have created a ticket for our team{ref}. "
-                "We will be in touch shortly.\n"
+            ref = (
+                p["ref_suffix"].format(ref=request.ticket_reference)
+                if request.ticket_reference
+                else ""
             )
+            body = f"{greeting}\n\n{p['ack'].format(label=label, ref=ref)}\n"
             return ReplyDraft(body=body)
 
         if request.kind == ReplyKind.CLARIFY:
+            # `request.guidance` is a free-text instruction meant for a real
+            # language model (see OllamaAIProvider) - this offline provider
+            # cannot translate arbitrary guidance text, so it always asks its
+            # own localized generic clarifying question instead.
             body = (
-                f"{greeting}\n\nThanks for contacting us. We would like to help but need a "
-                "little more detail first.\n\n"
-                f"{request.guidance or 'Could you describe what happened and what went wrong?'}\n\n"
-                "You can reply in your own words - there is no form to fill in.\n"
+                f"{greeting}\n\n{p['clarify_intro']}\n\n"
+                f"{p['clarify_question']}\n\n{p['footer']}\n"
             )
             return ReplyDraft(body=body)
 
         # ASK
-        parts = [f"{greeting}\n", f"Thanks for getting in touch about your {label}."]
+        parts = [f"{greeting}\n", p["ask_intro"].format(label=label)]
         if request.invalid_fields:
-            parts.append("\nSome details we received need correcting:")
+            parts.append(f"\n{p['invalid_intro']}")
             parts.extend(f"  - {f.label}: {f.error}" for f in request.invalid_fields)
         if request.missing_fields:
-            parts.append("\nTo move this forward, could you please provide:")
+            parts.append(f"\n{p['missing_intro']}")
             parts.extend(
                 f"  - {s.label}: {s.description}".rstrip() for s in request.missing_fields
             )
-        parts.append("\nYou can reply in your own words - no need for a form.\n")
+        parts.append(f"\n{p['footer']}\n")
         return ReplyDraft(body="\n".join(parts))
 
     # ---- helpers ----

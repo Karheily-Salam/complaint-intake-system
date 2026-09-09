@@ -13,6 +13,7 @@ from app.ai.base import (
     Classification,
     ExtractedField,
     ExtractionResult,
+    LanguageDetection,
     ReplyDraft,
     ReplyRequest,
 )
@@ -40,6 +41,9 @@ class ScriptedAI(AIProvider):
 
     async def summarize(self, transcript):
         return self.summary
+
+    async def detect_language(self, message):
+        return LanguageDetection(code="en", confidence=1.0)
 
     async def compose_reply(self, request: ReplyRequest):
         return ReplyDraft(body=f"[{request.kind.value}]")

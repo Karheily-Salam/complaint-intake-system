@@ -26,6 +26,10 @@ class Conversation(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(
         String(30), default=ConversationStatus.OPEN, nullable=False, index=True
     )
+    # ISO 639-1 code of the customer's language, detected from their messages
+    # (see ConversationEngine._resolve_language). Null until the first inbound
+    # message is processed.
+    language_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="conversations")
     messages: Mapped[list[Message]] = relationship(

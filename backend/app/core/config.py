@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # Below this classifier confidence the engine treats the complaint type as
     # not yet known and asks the customer to clarify.
     min_classification_confidence: float = 0.45
+    # Below this language-detection confidence the engine keeps the
+    # conversation's previously known language instead of switching to
+    # whatever the (unreliable) detection guessed for this message.
+    min_language_confidence: float = 0.5
 
     # ---- Email provider ----
     email_provider: str = "mock"  # mock (only mock implemented in the prototype)

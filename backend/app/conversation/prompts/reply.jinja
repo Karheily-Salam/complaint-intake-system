@@ -2,6 +2,11 @@ Write a short, warm, professional support email to the customer. Plain text only
 no subject line. {% if customer_name %}Address them as {{ customer_name }}.{% endif %}
 Make clear they can reply in their own words - there is no form to fill in.
 
+Write the ENTIRE reply in {{ language_name }} (ISO code: {{ language_code }}),
+regardless of what language this prompt or the complaint topic below is in.
+Field names/keys are internal identifiers only - never quote them verbatim;
+refer to fields by a natural translation of their label instead.
+
 Complaint topic: {{ complaint_label }}
 
 {% if kind == "acknowledge" %}

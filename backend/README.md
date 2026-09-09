@@ -57,6 +57,36 @@ schema "what fields are required?" and collects them. See
   it falls back to `rule_based` (`OLLAMA_FALLBACK_TO_RULE_BASED=true`, default) or
   raises `AIProviderError`.
 
+## Language
+
+Every customer-facing reply is written in the language of the customer's
+*latest* message, not always English:
+
+- `AIProvider.detect_language()` (implemented by both `RuleBasedAIProvider`
+  and `OllamaAIProvider`) detects/infers the language of the inbound
+  message. The engine, not the provider, decides what to do with that:
+  `ConversationEngine._resolve_language()` prefers the newly detected
+  language, and falls back to the conversation's previously stored language
+  only when the latest message has no reliable language signal (e.g. it is
+  only digits) - so an ambiguous reply doesn't reset a conversation back to
+  English.
+- The resolved code is persisted as `Conversation.language_code` (added via
+  the `add conversation language_code` migration) so it stays consistent
+  across turns, and is exposed on `ConversationOut` for the frontend/API.
+- `RuleBasedAIProvider` supports English/Russian/Arabic deterministically:
+  script-based Unicode detection (no model, no network) for
+  `detect_language`, and a small localized phrase table for
+  `compose_reply`'s scaffolding (greeting, "thanks for contacting us",
+  "still needed", etc.). It does **not** translate schema-driven content
+  (complaint labels, field labels/descriptions from the YAML schemas) - only
+  the surrounding natural-language scaffold is localized. Real translation
+  of arbitrary business content needs a model; that's `OllamaAIProvider`,
+  which receives the resolved language via `ReplyRequest.language_code` and
+  is instructed (`prompts/reply.jinja`) to write the entire reply in it.
+- This only changes *how* the reply is phrased. Classification, required
+  fields, completeness, and ticket creation are entirely unaffected - see
+  `tests/test_multilingual_replies.py`.
+
 ## Adding / changing a complaint type
 
 Edit or add a YAML file in `app/domain/complaint_schemas/definitions/`. No engine,
