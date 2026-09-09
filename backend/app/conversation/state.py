@@ -29,7 +29,6 @@ class ConversationState:
 
     latest_message: str
     complaint_type: str | None = None
-    method_key: str | None = None
     collected: list[CollectedField] = field(default_factory=list)
     customer_name: str | None = None
     # Every inbound customer message, oldest first (used for summarisation).
@@ -66,6 +65,9 @@ class FieldOutcome:
 class EngineOutcome:
     classification: Classification | None = None
     complaint_type: str | None = None
+    # Free-text deposit method as stated by the customer (verbatim copy of the
+    # ``deposit_method`` field, if any). Denormalisation for the ticket / UI only -
+    # the engine never branches on it.
     method_key: str | None = None
 
     # Full resolved field set to persist (only fields that exist/were touched).

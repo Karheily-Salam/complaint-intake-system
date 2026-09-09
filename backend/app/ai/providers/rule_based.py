@@ -43,11 +43,17 @@ _PROBLEM_SIGNAL_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Distinctive method aliases (brand / ticker names) that are safe to match on
-# their own; generic words like "card" or "bank" require a payment-context cue.
-_METHOD_CUE_RE = (
-    r"(?:deposit\s+method|payment\s+method|method|paid|pay|sent|deposited|made|"
-    r"transferred|via|using|used|through|by|with)"
+# Free-text deposit method ("bank transfer", "PayPal", "my local payment wallet").
+# We capture verbatim what the customer said - no mapping to any category.
+_DEPOSIT_METHOD_RES = (
+    re.compile(r"(?:deposit|payment)\s+method\s*(?:was|is|:|-)?\s*([^\n,.;]{2,60})", re.IGNORECASE),
+    re.compile(r"\bmethod\s*(?:was|is|:|-)\s*([^\n,.;]{2,60})", re.IGNORECASE),
+    re.compile(
+        r"\b(?:deposited|paid|sent|transferred|"
+        r"made\s+(?:the|my|a)\s+(?:deposit|payment|transfer))\b[^\n.;,]*?"
+        r"\b(?:using|via|through|with|by)\s+(?:my\s+|a\s+|an\s+|the\s+)?([^\n,.;]{2,60})",
+        re.IGNORECASE,
+    ),
 )
 
 _EMAIL_RE = re.compile(r"[^\s@<>()\[\]]+@[^\s@<>()\[\]]+")
@@ -178,8 +184,8 @@ class RuleBasedAIProvider(AIProvider):
             m = _DATE_RE.search(message)
             return m.group(1) if m else None
 
-        if spec.type == FieldType.ENUM:
-            return self._match_enum(spec, message)
+        if spec.key == "deposit_method":
+            return self._match_free_text_method(message) or self._match_labelled(spec, message)
 
         if spec.key == "user_id":
             m = _USER_ID_RE.search(message)
@@ -204,43 +210,12 @@ class RuleBasedAIProvider(AIProvider):
 
         return None
 
-    @classmethod
-    def _match_enum(cls, spec: FieldSpec, message: str) -> str | None:
-        values = spec.validation.enum_values or []
-        aliases = spec.validation.enum_aliases or {}
-
-        alias_to_value: dict[str, str] = {}
-        for value in values:
-            for phrase in [value, value.replace("_", " "), *aliases.get(value, [])]:
-                alias_to_value[phrase.lower().strip()] = value
-        ordered = sorted(alias_to_value, key=len, reverse=True)
-        text = message.lower()
-
-        # 1. Explicit "<label>: <value>" (e.g. "deposit method: card").
-        labelled = cls._match_labelled(spec, message)
-        if labelled:
-            lab = labelled.lower().strip()
-            if lab in alias_to_value:
-                return alias_to_value[lab]
-            for alias in ordered:
-                if re.search(rf"\b{re.escape(alias)}\b", lab):
-                    return alias_to_value[alias]
-
-        # 2. Multi-word alias, or alias followed by transfer/payment/deposit.
-        for alias in ordered:
-            if " " in alias and re.search(rf"\b{re.escape(alias)}\b", text):
-                return alias_to_value[alias]
-            if re.search(rf"\b{re.escape(alias)}\b\s+(?:transfer|payment|deposit)\b", text):
-                return alias_to_value[alias]
-
-        # 3. Single-word alias only with a nearby payment-context cue.
-        for alias in ordered:
-            if " " in alias:
-                continue
-            if re.search(
-                rf"\b{_METHOD_CUE_RE}\b[\w\s]{{0,20}}?\b{re.escape(alias)}\b", text
-            ):
-                return alias_to_value[alias]
+    @staticmethod
+    def _match_free_text_method(message: str) -> str | None:
+        for pattern in _DEPOSIT_METHOD_RES:
+            m = pattern.search(message)
+            if m:
+                return m.group(1).strip(" '\".")
         return None
 
     @staticmethod

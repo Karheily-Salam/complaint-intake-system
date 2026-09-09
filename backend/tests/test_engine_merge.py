@@ -145,30 +145,42 @@ async def test_restating_the_same_value_is_not_a_change():
     assert user_id.changed is False
 
 
-async def test_deposit_method_second_pass_folds_in_method_fields():
+async def test_deposit_method_is_generic_and_does_not_branch():
     eng = engine()
     eng._ai.classification = Classification(type="deposit", confidence=0.9)
-    # pass 1 -> discovers the method; pass 2 -> pulls a method-specific field
+    # A single extraction call - the engine must NOT run a method-specific pass.
     eng._ai.extractions = [
-        ExtractionResult(fields=[ExtractedField(key="deposit_method", value="card")]),
-        ExtractionResult(fields=[ExtractedField(key="card_last_four", value="4242")]),
+        ExtractionResult(
+            fields=[ExtractedField(key="deposit_method", value="my local payment wallet")]
+        ),
     ]
     state = ConversationState(
-        latest_message="it was on my card ending 4242",
+        latest_message="I used my local payment wallet",
         complaint_type="deposit",
         collected=[
             CollectedField("user_id", "U-1", FieldStatus.VALIDATED),
             CollectedField("account_email", "a@example.com", FieldStatus.VALIDATED),
-            CollectedField("source_wallet_or_account", "Visa", FieldStatus.VALIDATED),
+            CollectedField("source_wallet_or_account", "corner shop", FieldStatus.VALIDATED),
             CollectedField("transaction_date", "2026-09-01", FieldStatus.VALIDATED),
+            CollectedField("problem_description", "Deposit never credited.", FieldStatus.VALIDATED),
         ],
     )
     outcome = await eng.advance(state)
-    assert outcome.method_key == "card"
+
+    # the free-text method is stored verbatim
     values = {f.key: f.value for f in outcome.fields}
-    assert values["card_last_four"] == "4242"
-    # remaining card fields are now required
-    assert set(s.key for s in outcome.missing_fields) == {
-        "card_auth_code",
-        "payment_processor_reference",
+    assert values["deposit_method"] == "my local payment wallet"
+    assert outcome.method_key == "my local payment wallet"
+    # exactly one extraction call was consumed (no second/method pass)
+    assert eng._ai.extractions == []
+    # no additional fields were required - the complaint is complete
+    assert outcome.missing_fields == []
+    assert outcome.is_complete is True
+    assert {f.key for f in outcome.fields} == {
+        "user_id",
+        "account_email",
+        "source_wallet_or_account",
+        "transaction_date",
+        "deposit_method",
+        "problem_description",
     }

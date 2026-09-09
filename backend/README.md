@@ -40,9 +40,9 @@ in any order and across many messages; never re-asking a collected valid field;
 merging new extractions without clobbering existing values on empty extraction;
 detecting invalid values and asking again; customer corrections (invalid→valid
 and valid→valid); the complaint type becoming known only after an ambiguous first
-message; the deposit method being discovered mid-conversation, with
-method-specific fields becoming required only once the method is known; and
-switching to ticketed exactly when the schema requirements are met. See
+message; and switching to ticketed exactly when the schema's required fields are
+all valid. The engine **never branches on a field value** — it only asks the
+schema "what fields are required?" and collects them. See
 `tests/test_conversation_flows.py` and `tests/test_engine_merge.py`.
 
 ## AI providers
@@ -57,11 +57,19 @@ switching to ticketed exactly when the schema requirements are met. See
   it falls back to `rule_based` (`OLLAMA_FALLBACK_TO_RULE_BASED=true`, default) or
   raises `AIProviderError`.
 
-## Adding a complaint type or deposit method
+## Adding / changing a complaint type
 
-Edit / add a YAML file in `app/domain/complaint_schemas/definitions/`. No engine,
-service, or prompt changes required. The prototype ships four deposit methods
-(`bank_transfer`, `crypto`, `card`, `e_wallet`); see
+Edit or add a YAML file in `app/domain/complaint_schemas/definitions/`. No engine,
+service, or prompt changes required — the engine reads required fields from the
+schema each turn.
+
+**Deposit method is a generic free-text field.** Available methods differ by
+country/market and change over time, so the prototype does not model specific
+methods (no `bank_transfer` / `crypto` / `card` / `e_wallet` anywhere). The AI
+extracts whatever the customer says (e.g. "my local payment wallet") verbatim;
+it is never mapped to a category and never triggers extra required fields.
+`ComplaintSchema.fields_for()` is the seam where method/country-specific rules
+could be layered in later without touching the engine — see
 `definitions/deposit_methods/README.md`.
 
 ## Regenerating a migration after model changes

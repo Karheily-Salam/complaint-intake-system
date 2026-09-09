@@ -24,9 +24,10 @@ Frontend (React/TS)  ──REST──►  FastAPI  ──►  IntakeService (orc
                                                  └─► Repositories ── SQLAlchemy ── SQLite
 ```
 
-Business rules (required fields, validation, deposit methods) live in
-**YAML schema files** under `backend/app/domain/complaint_schemas/definitions/`,
-never in prompts or engine code.
+Business rules (required fields, validation) live in **YAML schema files** under
+`backend/app/domain/complaint_schemas/definitions/`, never in prompts or engine
+code. The engine never branches on a field value — the deposit method is a
+generic free-text field, not a fixed list.
 
 See `docs/` — *(to be added)* — for deeper notes; `backend/README.md` for backend
 specifics.

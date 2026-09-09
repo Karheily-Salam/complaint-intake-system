@@ -178,111 +178,131 @@ def test_unrelated_reply_does_not_overwrite_or_lose_fields(client):
 
 
 # --------------------------------------------------------------------------- deposit
+#
+# Deposit has ONE flat set of generic fields. `deposit_method` is free text and
+# never triggers extra required fields.
+
+_DEPOSIT_KEYS = {
+    "user_id",
+    "account_email",
+    "source_wallet_or_account",
+    "transaction_date",
+    "deposit_method",
+    "problem_description",
+}
 
 
-def test_deposit_method_supplied_in_second_email(client):
-    addr = "deposit-late-method@example.com"
-    r1 = send(
+def test_deposit_all_generic_fields_in_first_email_creates_ticket(client):
+    r = send(
         client,
         "My deposit has not arrived. User ID: U-9. Account email: bob@example.com. "
-        "Source wallet or account: my Chase checking account. "
-        "Transaction date: 2026-09-05.",
-        from_addr=addr,
+        "Source wallet or payment account: my Barclays current account. "
+        "Transaction date: 2026-09-05. Deposit method: bank transfer. "
+        "The money left my bank but was never credited.",
     )
-    cid = r1["conversation"]["id"]
-    assert r1["complaint_type"] == "deposit"
-    assert r1["is_complete"] is False
-    assert r1["missing_fields"] == ["deposit_method"]
-    # method-specific fields must NOT be asked for yet
-    assert "sending bank name" not in r1["reply_body"].lower()
+    assert r["complaint_type"] == "deposit"
+    assert r["is_complete"] is True
+    assert r["missing_fields"] == []
+    assert r["ticket_reference"] is not None
 
-    r2 = send(
-        client,
-        "It was a bank transfer. "
-        "Sending bank name: Chase. "
-        "Sender IBAN or account number: DE89370400440532013000. "
-        "Transfer reference: DEP-REF-77.",
-        conversation_id=cid,
-        from_addr=addr,
-    )
-    assert r2["method_key"] == "bank_transfer"
-    assert r2["is_complete"] is True
-    assert r2["ticket_reference"] is not None
-    f = fields_of(r2)
-    assert f["deposit_method"]["value"] == "bank_transfer"
-    assert f["sender_bank_name"]["value"] == "Chase"
-    assert f["bank_reference"]["value"] == "DEP-REF-77"
+    f = fields_of(r)
+    assert set(f) == _DEPOSIT_KEYS  # exactly the generic fields, nothing extra
+    assert f["deposit_method"]["value"] == "bank transfer"
     assert f["transaction_date"]["value"] == "2026-09-05"
 
 
-def test_deposit_method_specific_fields_requested_only_after_method_known(client):
-    addr = "deposit-method-fields@example.com"
+def test_deposit_method_is_free_text_and_supplied_later_is_persisted(client):
+    addr = "deposit-freetext@example.com"
     r1 = send(
         client,
-        "Deposit not credited. User ID: U-11. Account email: cara@example.com. "
-        "Source wallet or account: personal Visa card. Transaction date: 2026-09-01.",
-        from_addr=addr,
-    )
-    cid = r1["conversation"]["id"]
-    assert r1["missing_fields"] == ["deposit_method"]
-    body1 = r1["reply_body"].lower()
-    assert "authorization code" not in body1
-    assert "card last 4 digits" not in body1
-
-    r2 = send(
-        client,
-        "I paid by card.",
-        conversation_id=cid,
-        from_addr=addr,
-    )
-    assert r2["method_key"] == "card"
-    assert r2["is_complete"] is False
-    assert set(r2["missing_fields"]) == {
-        "card_last_four",
-        "card_auth_code",
-        "payment_processor_reference",
-    }
-    body2 = r2["reply_body"].lower()
-    assert "card last 4 digits" in body2
-
-    r3 = send(
-        client,
-        "Card last 4 digits: 4242. "
-        "Authorization code: AUTH123. "
-        "Payment processor reference: PSP-9001.",
-        conversation_id=cid,
-        from_addr=addr,
-    )
-    assert r3["is_complete"] is True
-    f = fields_of(r3)
-    assert f["card_last_four"]["value"] == "4242"
-    assert f["card_auth_code"]["value"] == "AUTH123"
-
-
-def test_deposit_invalid_card_last_four_is_rejected_then_accepted(client):
-    addr = "deposit-bad-card@example.com"
-    r1 = send(
-        client,
-        "Card deposit missing. User ID: U-12. Account email: dan@example.com. "
-        "Source wallet or account: my credit card. Transaction date: 2026-09-02. "
-        "I paid by card. "
-        "Card last 4 digits: 12ab. "
-        "Authorization code: AUTH9. "
-        "Payment processor reference: PSP-1.",
+        "My deposit is missing. User ID: U-20. Account email: liv@example.com. "
+        "Source wallet or payment account: my corner shop cash desk. "
+        "Transaction date: 2026-09-06. Nothing was credited to my balance.",
         from_addr=addr,
     )
     cid = r1["conversation"]["id"]
     assert r1["is_complete"] is False
-    assert "card_last_four" in r1["invalid_fields"]
+    assert r1["missing_fields"] == ["deposit_method"]
+    # nothing method-specific is ever requested
+    assert set(r1["missing_fields"]).issubset(_DEPOSIT_KEYS)
 
     r2 = send(
         client,
-        "Sorry - card last 4 digits: 4242.",
+        "I deposited using my local payment wallet.",
         conversation_id=cid,
         from_addr=addr,
     )
     assert r2["is_complete"] is True
-    assert fields_of(r2)["card_last_four"]["value"] == "4242"
+    assert r2["ticket_reference"] is not None
+    assert "local payment wallet" in fields_of(r2)["deposit_method"]["value"]
+    assert "local payment wallet" in (r2["method_key"] or "")
+
+
+def test_deposit_unusual_method_does_not_add_required_fields(client):
+    r = send(
+        client,
+        "Deposit problem. User ID: U-30. Account email: obs@example.com. "
+        "Source wallet or payment account: regional credit union account. "
+        "Transaction date: 2026-09-03. "
+        "Deposit method: an obscure local fintech app called ZapPay. "
+        "The deposit just vanished and support never replied.",
+    )
+    assert r["is_complete"] is True
+    assert r["missing_fields"] == []
+    f = fields_of(r)
+    assert set(f) == _DEPOSIT_KEYS
+    assert f["deposit_method"]["value"] == "an obscure local fintech app called ZapPay"
+
+
+def test_deposit_duplicate_information_not_requested_again(client):
+    addr = "deposit-dupe@example.com"
+    r1 = send(
+        client,
+        "Deposit issue. User ID: U-40. Account email: dup@example.com. "
+        "The funds never arrived in my account.",
+        from_addr=addr,
+    )
+    cid = r1["conversation"]["id"]
+    assert set(r1["missing_fields"]) == {
+        "source_wallet_or_account",
+        "transaction_date",
+        "deposit_method",
+    }
+
+    r2 = send(
+        client,
+        "As before, User ID: U-40. "
+        "Source wallet or payment account: my Wise account. "
+        "Transaction date: 2026-09-02. Deposit method: Wise transfer.",
+        conversation_id=cid,
+        from_addr=addr,
+    )
+    assert r2["is_complete"] is True
+    assert fields_of(r2)["user_id"]["value"] == "U-40"
+
+
+def test_deposit_invalid_email_then_correction(client):
+    addr = "deposit-correction@example.com"
+    r1 = send(
+        client,
+        "Deposit not credited. User ID: U-50. Account email: sam@broken (typo). "
+        "Source wallet or payment account: my checking account. "
+        "Transaction date: 2026-09-01. Deposit method: bank transfer. Money gone.",
+        from_addr=addr,
+    )
+    cid = r1["conversation"]["id"]
+    assert r1["is_complete"] is False
+    assert "account_email" in r1["invalid_fields"]
+
+    r2 = send(
+        client,
+        "The account email is sam@example.com",
+        conversation_id=cid,
+        from_addr=addr,
+    )
+    assert r2["is_complete"] is True
+    assert r2["invalid_fields"] == []
+    assert fields_of(r2)["account_email"]["value"] == "sam@example.com"
 
 
 # --------------------------------------------------------------------------- other

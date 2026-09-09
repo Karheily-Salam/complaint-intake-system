@@ -24,7 +24,8 @@ class Complaint(Base, TimestampMixin):
 
     # ComplaintType value; nullable until the engine classifies the conversation.
     type: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
-    # Sub-selector for schema-driven complaint types (e.g. deposit method key).
+    # Free-text deposit method as stated by the customer (denormalised copy of the
+    # ``deposit_method`` collected field). The engine never branches on it.
     method_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     concise_description: Mapped[str | None] = mapped_column(Text, nullable=True)

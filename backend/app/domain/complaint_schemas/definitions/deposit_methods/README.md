@@ -1,41 +1,31 @@
-# Deposit methods
+# Deposit methods — intentionally NOT modelled in the prototype
 
-Deposit complaints share the `common_fields` defined in `../deposit.yaml` plus the
-`method_field` (`deposit_method`). Each **method** listed under `methods:` then
-contributes its own `additional_fields`, which become required **only after** the
-conversation engine has determined which method the customer used.
+Available deposit methods differ by country/market and change over time, so the
+prototype treats the deposit method as a **generic free-text field**
+(`deposit_method` in `../deposit.yaml`). The AI extracts whatever the customer
+says they used ("bank transfer", "PayPal", "my local payment wallet"); it is
+**not** mapped to any predefined category, and it never triggers additional
+required fields.
 
-## Adding or changing a method (no code changes)
+There is no predefined method list anywhere in the active implementation.
 
-Add an entry under `methods:` in `../deposit.yaml`:
+## If method/country-specific rules are needed later (optional extension)
+
+The seam is `ComplaintSchema.fields_for()` (see `../../spec.py`). A future
+extension can wrap the schema registry so that, given the already-collected
+fields (including `deposit_method` and a country), it returns extra `FieldSpec`s
+— e.g. a config file:
 
 ```yaml
-methods:
-  - key: giro
-    label: Giro / standing order
-    description: Recurring domestic giro payment.
-    aliases: ["giro", "standing order", "direct debit"]
-    additional_fields:
-      - key: giro_mandate_reference
-        label: Mandate reference
-        type: string
-        required: true
-        description: The giro mandate reference.
-        extraction_hint: A mandate / mandate reference identifier.
+# deposit_method_rules.yaml  (illustrative - not implemented)
+- when: { deposit_method_matches: "(?i)bank|wire|sepa", country: DE }
+  add_fields:
+    - key: iban
+      label: IBAN
+      type: string
+      required: true
 ```
 
-- `key` is added automatically to `deposit_method`'s allowed enum values.
-- `aliases` let a provider map free-text wording ("standing order", "direct
-  debit") onto the method key. Keep synonyms here, not in Python.
-- `additional_fields` use the same `FieldSpec` shape as `common_fields`.
-
-The conversation engine reads all of this through `ComplaintSchemaRegistry` and:
-
-- extracts `deposit_method` from whichever message reveals it (possibly not the
-  first),
-- once known, folds in that method's `additional_fields`,
-- asks only for whichever required fields are still missing or invalid,
-- creates the ticket the moment the deterministic required-field set is satisfied.
-
-A later refactor may move each method into its own file here and merge them in
-`ComplaintSchemaRegistry.from_directory`; the `FieldSpec` shape stays identical.
+The conversation engine would not change: it already asks the schema "what
+fields are required right now?" every turn and re-computes missing/invalid
+deterministically.

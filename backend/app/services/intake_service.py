@@ -79,7 +79,6 @@ class IntakeService:
         state = ConversationState(
             latest_message=payload.body,
             complaint_type=complaint.type,
-            method_key=complaint.method_key,
             collected=[
                 CollectedField(key=f.key, value=f.value, status=_status(f.status))
                 for f in complaint.fields
@@ -93,7 +92,7 @@ class IntakeService:
         # ---- persist engine outcome ----
         if outcome.complaint_type and not complaint.type:
             complaint.type = outcome.complaint_type
-        complaint.method_key = outcome.method_key
+        complaint.method_key = (outcome.method_key or None) and outcome.method_key[:50]
         if outcome.concise_description:
             complaint.concise_description = outcome.concise_description
 

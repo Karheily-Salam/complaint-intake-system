@@ -11,10 +11,12 @@ Guarantees (see the project brief):
 - invalid values are detected and requested again
 - a customer may correct a previously supplied value
 - the complaint type may become known only after an ambiguous first message
-- a deposit method may be discovered mid-conversation; its method-specific fields
-  become required only once the method is known
 - the complaint becomes ready/ticketable exactly when the deterministic schema
   requirements are satisfied
+
+The engine never branches on any field value (e.g. the deposit method). It asks
+the schema for the required fields and collects them; a field like
+``deposit_method`` is just free text the customer provided.
 
 It depends only on :class:`AIProvider` and :class:`ComplaintSchemaRegistry` and
 performs no I/O.
@@ -31,6 +33,8 @@ from app.domain.enums import ConversationStatus, FieldStatus
 from app.domain.validation import validate_field
 
 _PROBLEM_DESCRIPTION_KEY = "problem_description"
+# Purely for denormalisation onto the ticket / UI - the engine does not branch on it.
+_DEPOSIT_METHOD_KEY = "deposit_method"
 
 
 class ConversationEngine:
@@ -39,10 +43,7 @@ class ConversationEngine:
         self._registry = registry
 
     async def advance(self, state: ConversationState) -> EngineOutcome:
-        outcome = EngineOutcome(
-            complaint_type=state.complaint_type,
-            method_key=state.method_key,
-        )
+        outcome = EngineOutcome(complaint_type=state.complaint_type)
 
         # ---- 1. classify the complaint type (only while unknown) ----
         complaint_type = state.complaint_type
@@ -70,23 +71,20 @@ class ConversationEngine:
             f.key: FieldOutcome(f.key, f.value, f.status) for f in state.collected
         }
 
-        # ---- 3-5. extraction, with a second pass if the method just appeared ----
-        method_key = self._resolved_method(schema, current)
-        specs = schema.fields_for(method_key)
+        # ---- 3. extraction against this complaint's (flat) field set ----
+        specs = schema.fields_for()
         current = await self._extract_and_merge(state.latest_message, specs, current)
 
-        rediscovered = self._resolved_method(schema, current)
-        if rediscovered != method_key:
-            method_key = rediscovered
-            specs = schema.fields_for(method_key)
-            current = await self._extract_and_merge(state.latest_message, specs, current)
-        outcome.method_key = method_key
+        # deposit_method (if the schema has one) is captured verbatim - the engine
+        # does not interpret it or let it change the required field set.
+        method_fo = current.get(_DEPOSIT_METHOD_KEY)
+        outcome.method_key = method_fo.value if (method_fo and method_fo.is_present) else None
 
-        # ---- 6. concise description, kept fresh every turn ----
+        # ---- 4. concise description, kept fresh every turn ----
         transcript = state.inbound_transcript or [state.latest_message]
         summary = (await self._ai.summarize(transcript)).strip()
 
-        # ---- 7. open schema ("other"): description-sufficiency gate ----
+        # ---- 5. open schema ("other"): description-sufficiency gate ----
         if schema.open_schema:
             if len(summary.split()) >= schema.min_description_words:
                 current[_PROBLEM_DESCRIPTION_KEY] = FieldOutcome(
@@ -98,14 +96,13 @@ class ConversationEngine:
         else:
             outcome.concise_description = summary or None
 
-        # ---- 8. deterministic missing / invalid computation ----
-        specs_now = schema.fields_for(method_key)
+        # ---- 6. deterministic missing / invalid computation ----
         outcome.fields = list(current.values())
-        missing, invalid = self._classify_fields(specs_now, current)
+        missing, invalid = self._classify_fields(specs, current)
         outcome.missing_fields = missing
         outcome.invalid_fields = invalid
 
-        # ---- 9. transition ----
+        # ---- 7. transition ----
         if not missing and not invalid:
             outcome.is_complete = True
             outcome.next_status = ConversationStatus.VALIDATING
@@ -138,14 +135,6 @@ class ConversationEngine:
         return outcome
 
     # ------------------------------------------------------------------ helpers
-
-    def _resolved_method(
-        self, schema: ComplaintSchema, current: dict[str, FieldOutcome]
-    ) -> str | None:
-        if not schema.methods or schema.method_field is None:
-            return None
-        fo = current.get(schema.method_field.key)
-        return fo.value if (fo and fo.is_present) else None
 
     async def _extract_and_merge(
         self,
