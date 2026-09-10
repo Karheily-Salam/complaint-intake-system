@@ -31,6 +31,11 @@ class InboundEmail(BaseModel):
     in_reply_to: str | None = None
     # RFC 5322 ``References`` header, oldest first, if any.
     references: list[str] = Field(default_factory=list)
+    # RFC 3834 ``Auto-Submitted`` and the legacy ``Precedence`` header. An
+    # automatic responder must not reply to automatic mail (out-of-office
+    # notices, bounces, list traffic) - see EmailPoller._loop_risk.
+    auto_submitted: str | None = None
+    precedence: str | None = None
     # Deprecated free-form correlation id used only by the mock/dev HTTP path
     # (``/inbox``). Real providers use message_id/in_reply_to/references
     # instead - never rely on this for real email threading.

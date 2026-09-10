@@ -119,6 +119,9 @@ class ImapSmtpEmailProvider(EmailProvider):
             msg["In-Reply-To"] = email_out.in_reply_to
         if email_out.references:
             msg["References"] = " ".join(email_out.references)
+        # RFC 3834: mark our own mail as automatic so that other responders
+        # (and our own poller, if a copy ever comes back) do not reply to it.
+        msg["Auto-Submitted"] = "auto-replied"
         msg.set_content(email_out.body, charset="utf-8")
 
         server = self._smtp_connect()
@@ -204,6 +207,8 @@ class ImapSmtpEmailProvider(EmailProvider):
             body=body,
             in_reply_to=in_reply_to,
             references=references,
+            auto_submitted=(msg["Auto-Submitted"] or "").strip() or None,
+            precedence=(msg["Precedence"] or "").strip() or None,
         )
 
     @staticmethod

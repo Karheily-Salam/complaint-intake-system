@@ -56,6 +56,14 @@ class EmailPoller:
 
         processed = 0
         for inbound in inbox:
+            skip_reason = _loop_risk(inbound)
+            if skip_reason:
+                # Acknowledged, not processed: it is answered/ignored on
+                # purpose, so leaving it unread would just re-trigger this
+                # every poll forever.
+                logger.info("Ignoring %s email %s", skip_reason, inbound.message_id)
+                await self._acknowledge(inbound)
+                continue
             if await self._process_one(inbound):
                 processed += 1
         return processed
@@ -76,6 +84,10 @@ class EmailPoller:
         finally:
             db.close()
 
+        await self._acknowledge(inbound)
+        return True
+
+    async def _acknowledge(self, inbound) -> None:
         try:
             await self.provider.mark_processed(inbound.message_id)
         except Exception:
@@ -83,7 +95,6 @@ class EmailPoller:
             # means it may be fetched again, which the idempotency check
             # absorbs. Not an error worth failing the batch over.
             logger.warning("Could not acknowledge email %s with the provider", inbound.message_id)
-        return True
 
     async def run_forever(self) -> None:
         interval = max(5, settings.email_poll_interval_seconds)
@@ -97,3 +108,46 @@ class EmailPoller:
             except Exception:
                 logger.exception("Unexpected error in email poll cycle")
             await asyncio.sleep(interval)
+
+
+def our_own_addresses() -> set[str]:
+    """Every address this system sends from or to internally."""
+    candidates = (
+        settings.imap_username,
+        settings.smtp_from_addr,
+        settings.smtp_sender,
+        settings.support_inbox_address,
+    )
+    return {addr.strip().lower() for addr in candidates if addr}
+
+
+def _loop_risk(inbound) -> str | None:
+    """Why this email must not be answered, or None if it is genuine customer mail.
+
+    An automatic responder that replies to other automatic mail creates a
+    loop. Two cases matter here:
+
+    - *Our own mail coming back*: the ticket notification we send to the
+      support inbox lands in the polled mailbox if the two are the same
+      address. Without this check the poller would read it as a new customer
+      complaint from ourselves, reply to itself, and keep going - a runaway
+      loop of tickets and mail from a single plausible misconfiguration.
+    - *Auto-replies* (out-of-office, bounces, list mail): RFC 3834 requires an
+      automatic responder not to answer these, and treating a vacation notice
+      as the customer's answer to a question would corrupt the conversation.
+
+    Both are skipped and acknowledged rather than left unread.
+    """
+    sender = (inbound.from_addr or "").strip().lower()
+    if sender and sender in our_own_addresses():
+        return "self-addressed"
+
+    auto_submitted = (getattr(inbound, "auto_submitted", None) or "").strip().lower()
+    if auto_submitted and auto_submitted != "no":
+        return "auto-submitted"
+
+    precedence = (getattr(inbound, "precedence", None) or "").strip().lower()
+    if precedence in {"bulk", "list", "junk", "auto_reply"}:
+        return f"{precedence}-precedence"
+
+    return None

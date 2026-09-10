@@ -41,6 +41,17 @@ async def lifespan(app: FastAPI):
 
     poller_task: asyncio.Task | None = None
     if settings.email_provider.lower() != "mock":
+        polled = (settings.imap_username or "").strip().lower()
+        if polled and polled == settings.support_inbox_address.strip().lower():
+            # Not fatal (the poller skips its own mail), but it means every
+            # completed ticket lands back in the mailbox being polled, where
+            # it is silently marked read - so nobody ever sees the tickets.
+            logger.warning(
+                "SUPPORT_INBOX_ADDRESS is the same mailbox the poller reads "
+                "(IMAP_USERNAME). Completed tickets will be delivered into the "
+                "complaints inbox and skipped as self-addressed - point "
+                "SUPPORT_INBOX_ADDRESS at a different mailbox."
+            )
         poller_task = asyncio.create_task(EmailPoller().run_forever())
 
     try:

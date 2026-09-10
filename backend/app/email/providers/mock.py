@@ -41,6 +41,8 @@ class MockEmailProvider(EmailProvider):
         in_reply_to: str | None = None,
         references: list[str] | None = None,
         message_id: str | None = None,
+        auto_submitted: str | None = None,
+        precedence: str | None = None,
     ) -> InboundEmail:
         return InboundEmail(
             message_id=message_id or f"<in-{uuid.uuid4().hex[:12]}@mock.local>",
@@ -51,6 +53,8 @@ class MockEmailProvider(EmailProvider):
             thread_id=thread_id,
             in_reply_to=in_reply_to,
             references=references or [],
+            auto_submitted=auto_submitted,
+            precedence=precedence,
         )
 
     # ---- EmailProvider ----
