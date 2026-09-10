@@ -74,8 +74,12 @@ class IntakeService:
         conversation id cannot reach their data.
         """
         # Customer identity is the inbound email address only - never reconciled
-        # against user_id or other values from the message body.
-        customer = self.customers.get_or_create(payload.from_addr, payload.customer_name)
+        # against user_id or other values from the message body. Scoped to the
+        # demo side, so a caller claiming a real customer's address gets a
+        # separate demo record rather than that customer's row.
+        customer = self.customers.get_or_create(
+            payload.from_addr, payload.customer_name, is_demo=True
+        )
 
         if payload.conversation_id:
             conversation = self.conversations.get(payload.conversation_id, demo_only=True)
@@ -144,7 +148,7 @@ class IntakeService:
             logger.info("Inbound email already processed, skipping: %s", inbound.message_id)
             return None
 
-        customer = self.customers.get_or_create(inbound.from_addr)
+        customer = self.customers.get_or_create(inbound.from_addr, is_demo=False)
         conversation = self._resolve_conversation(customer, inbound)
 
         inbound_msg = self.conversations.add_message(
