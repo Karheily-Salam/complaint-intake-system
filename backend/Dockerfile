@@ -22,6 +22,11 @@ COPY pyproject.toml ./
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
+# The mailbox pre-flight check runs inside this container before EMAIL_PROVIDER
+# is switched to a real mailbox (see DEPLOYMENT.md), so it has to exist in the
+# image. Copied file-by-file rather than the whole scripts/ directory, to keep
+# scripts/reset_db.py - which drops the database - out of production.
+COPY scripts/check_email.py ./scripts/check_email.py
 RUN pip install -e .
 
 # Run as a non-root user. /app/data is where the persistent SQLite database
