@@ -22,11 +22,13 @@ COPY pyproject.toml ./
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
-# The mailbox pre-flight check runs inside this container before EMAIL_PROVIDER
-# is switched to a real mailbox (see DEPLOYMENT.md), so it has to exist in the
-# image. Copied file-by-file rather than the whole scripts/ directory, to keep
-# scripts/reset_db.py - which drops the database - out of production.
+# Operator scripts that are meant to be run inside the container:
+#   check_email.py - mailbox pre-flight, before switching to a real mailbox
+#   seed_demo.py   - populate/reset the demo dataset (demo-scoped rows only)
+# Copied file-by-file rather than the whole scripts/ directory, to keep
+# scripts/reset_db.py - which drops the entire database - out of production.
 COPY scripts/check_email.py ./scripts/check_email.py
+COPY scripts/seed_demo.py ./scripts/seed_demo.py
 RUN pip install -e .
 
 # Run as a non-root user. /app/data is where the persistent SQLite database
