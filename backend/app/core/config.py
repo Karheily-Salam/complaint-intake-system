@@ -90,12 +90,20 @@ class Settings(BaseSettings):
     # smtp_use_tls=true  -> STARTTLS after connecting (typically port 587)
     smtp_use_ssl: bool = False
     smtp_use_tls: bool = True
-    # Defaults to support_inbox_address when unset (see smtp_sender).
+    # Defaults to the polled mailbox when unset (see smtp_sender).
     smtp_from_addr: str | None = None
 
     @property
     def smtp_sender(self) -> str:
-        return self.smtp_from_addr or self.support_inbox_address
+        """The address customer-facing mail is sent from.
+
+        Defaults to the *polled* mailbox, not the support inbox: a customer
+        replies to whatever the From address is, and those replies have to
+        come back to the mailbox the poller reads, or the conversation is lost.
+        support_inbox_address is only the last resort, for the mock provider
+        where no IMAP mailbox is configured at all.
+        """
+        return self.smtp_from_addr or self.imap_username or self.support_inbox_address
 
     def missing_email_settings(self) -> list[str]:
         """Env var names required by the configured email provider but unset.

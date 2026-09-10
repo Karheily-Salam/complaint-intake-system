@@ -110,9 +110,15 @@ class ImapSmtpEmailProvider(EmailProvider):
 
     async def send(self, email_out: OutboundEmail) -> SentEmail:
         msg = EmailMessage()
-        msg["From"] = email_out.from_addr or self.smtp_from_addr
+        sender = email_out.from_addr or self.smtp_from_addr
+        msg["From"] = sender
         msg["To"] = email_out.to_addr
         msg["Subject"] = email_out.subject
+        # If mail is sent from something other than the mailbox we poll (a
+        # relay identity, say), the customer's reply would land somewhere
+        # nothing reads. Reply-To steers it back to the polled mailbox.
+        if self.imap_username and sender.lower() != self.imap_username.lower():
+            msg["Reply-To"] = self.imap_username
         message_id = make_msgid(domain=self.mail_domain)
         msg["Message-ID"] = message_id
         if email_out.in_reply_to:

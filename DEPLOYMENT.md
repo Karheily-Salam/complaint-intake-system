@@ -68,48 +68,72 @@ but it is not attached to a mailbox, so no customer mail is received or sent.
 Switching it on is configuration only - no code change, no redeploy of a
 different image.
 
-**What you need first (the one manual step):** a dedicated mailbox for
-complaints (e.g. `complaints@yourdomain.com`, or a free mailbox to start with)
-and an **app password** for it - not the account's own password, and not an
-OAuth client secret. For Gmail this means enabling 2FA and creating an app
-password; most other providers have the same feature under "app passwords" or
-"mail client access".
+**What you need first (the one manual step):** *two* addresses.
+
+1. A **dedicated mailbox** the system polls and sends as, e.g.
+   `complaints@yourdomain.com` or a free mailbox to start with, plus an **app
+   password** for it - not the account's own password, and not an OAuth client
+   secret. For Gmail: enable 2-Step Verification, then create an app password.
+2. A **different** address for finished tickets (`SUPPORT_INBOX_ADDRESS`) -
+   your own inbox is fine. It must not be mailbox 1: tickets delivered into
+   the polled mailbox are skipped as self-addressed (loop prevention), so
+   nobody would ever see them.
 
 Then, **on the server only** (`backend/.env` is git-ignored and never
 committed):
 
 ```bash
 cd /opt/projects/complaint-intake-system
-nano backend/.env          # see the IMAP_*/SMTP_* block in backend/.env.example
-docker compose up -d       # picks up the new env, no rebuild needed
-docker compose logs -f backend | head -30
+git pull                   # loop prevention + the pre-flight checker below
+nano backend/.env          # fill the IMAP_*/SMTP_* block, leave EMAIL_PROVIDER=mock
+docker compose up -d --build
+
+# Pre-flight: credentials are loaded but nothing is polling yet. This
+# authenticates against IMAP and SMTP and sends nothing.
+docker compose exec backend python -m scripts.check_email
+
+# Optional: prove sending works, to your own address only.
+docker compose exec backend python -m scripts.check_email --send-test-to you@example.com
 ```
 
-Set at minimum:
+Only once that passes, flip the provider:
+
+```bash
+sed -i 's/^EMAIL_PROVIDER=mock/EMAIL_PROVIDER=imap_smtp/' backend/.env
+docker compose up -d
+docker compose logs -f backend      # expect "Email poller started (every 60s, ...)"
+```
+
+Minimum settings (values are examples - see `backend/.env.example` for the
+full annotated block):
 
 ```
 EMAIL_PROVIDER=imap_smtp
-SUPPORT_INBOX_ADDRESS=support@yourdomain.com   # where finished tickets land
-MAIL_DOMAIN=yourdomain.com
-IMAP_HOST=… IMAP_USERNAME=… IMAP_PASSWORD=…
-SMTP_HOST=… SMTP_USERNAME=… SMTP_PASSWORD=…
+SUPPORT_INBOX_ADDRESS=you@example.com          # NOT the polled mailbox
+MAIL_DOMAIN=gmail.com
+IMAP_HOST=imap.gmail.com   IMAP_USERNAME=complaints@example.com   IMAP_PASSWORD=…
+SMTP_HOST=smtp.gmail.com   SMTP_USERNAME=complaints@example.com   SMTP_PASSWORD=…
 ```
 
+`SMTP_FROM_ADDR` is best left unset: it then defaults to `IMAP_USERNAME`, so
+customer replies come back to the mailbox that is actually polled.
+
 The backend validates this at startup and refuses to start if anything is
-missing, naming the missing variables (never their values). On success the log
-shows `Email poller started (every 60s, provider=imap_smtp)`.
+missing, naming the missing variables (never their values).
 
 Notes:
 
 - Outbound only - IMAP/SMTP are connections *from* the VPS, so no firewall
   change and no inbound port are needed.
 - Use a mailbox dedicated to this system: the poller marks messages `\Seen`
-  as it processes them.
-- To verify safely, email the complaints mailbox from your own address; the
-  ticket notification goes to `SUPPORT_INBOX_ADDRESS`, so point that at
-  yourself for the first run.
+  as it processes them, and anything already unread in the mailbox when you
+  switch over is treated as a new complaint (`check_email` reports the count
+  first).
+- Automatic mail (out-of-office replies, bounces, list traffic) and the
+  system's own mail are ignored rather than answered, so it cannot get into a
+  reply loop with itself or another responder.
 - To go back to a dry system at any time, set `EMAIL_PROVIDER=mock` and
-  `docker compose up -d`.
+  `docker compose up -d`. Nothing else changes.
 
 ## Updating
 
