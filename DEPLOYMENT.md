@@ -137,6 +137,58 @@ Notes:
 - To go back to a dry system at any time, set `EMAIL_PROVIDER=mock` and
   `docker compose up -d`. Nothing else changes.
 
+### Current status: staged for the Timeweb mailbox
+
+`backend/.env` on the VPS is already filled in for `complaints@gateplus.ru`
+except for the two passwords, and `EMAIL_PROVIDER` is still `mock`. Confirm
+with:
+
+```bash
+docker compose exec backend python -m scripts.check_email
+# -> FAIL  missing variables: IMAP_PASSWORD, SMTP_PASSWORD
+```
+
+Staged values: `IMAP_HOST=imap.timeweb.ru:993` (SSL),
+`SMTP_HOST=smtp.timeweb.ru:465` (implicit SSL, STARTTLS off),
+`IMAP_USERNAME=SMTP_USERNAME=SUPPORT_INBOX_ADDRESS=complaints@gateplus.ru`,
+`MAIL_DOMAIN=gateplus.ru`, `SMTP_FROM_ADDR` unset.
+
+This is a **single-mailbox** setup: the mailbox that receives complaints also
+receives the completed tickets. Loop protection means the system never reads
+its own notifications as complaints; they arrive in that mailbox already marked
+read, under a `[Ticket NNNNNN]` subject.
+
+**Two blockers remain, both on Timeweb's side** (verified 2026-09-10):
+
+1. **`gateplus.ru` does not resolve.** The `.ru` registry itself
+   (`a.dns.ripn.net`) returns NXDOMAIN — no NS, no MX, no SPF. Until the domain
+   is registered and delegated, no one can deliver mail to the mailbox and mail
+   sent from it will be rejected by most receivers.
+2. **SMTP submission to Timeweb is firewalled from this VPS.** All three
+   `smtp.timeweb.ru` IPs silently drop 25/465/587, while `imap.timeweb.ru:993`
+   connects fine and SMTP to unrelated providers works from the same host — so
+   this is not a VPS egress block. Needs a Timeweb support ticket.
+
+Verify both are fixed before switching:
+
+```bash
+host -t MX gateplus.ru                              # must return Timeweb MX records
+python3 -c "import socket;socket.create_connection(('smtp.timeweb.ru',465),8)"   # must not hang
+```
+
+Then enter the password and go live:
+
+```bash
+nano backend/.env      # fill IMAP_PASSWORD and SMTP_PASSWORD (never via a shell
+                       # command - it would land in shell history)
+docker compose up -d
+docker compose exec backend python -m scripts.check_email
+docker compose exec backend python -m scripts.check_email --send-test-to you@example.com
+sed -i 's/^EMAIL_PROVIDER=mock/EMAIL_PROVIDER=imap_smtp/' backend/.env
+docker compose up -d
+docker compose logs -f backend    # expect "Email poller started (every 60s, ...)"
+```
+
 ## Updating
 
 ```bash

@@ -45,7 +45,13 @@ class EmailPoller:
         return self._provider
 
     async def poll_once(self) -> int:
-        """Process one batch of new mail. Returns how many emails succeeded."""
+        """Process one batch of new mail.
+
+        Returns the number of emails handled without error, which includes one
+        recognised as already processed and skipped - that is a success, not
+        new work. Emails ignored as loop/auto-reply traffic are not counted,
+        and neither are failures, which stay in the mailbox for the next poll.
+        """
         try:
             inbox = await self.provider.fetch_new()
         except Exception:
