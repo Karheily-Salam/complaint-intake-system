@@ -76,16 +76,54 @@ Every customer-facing reply is written in the language of the customer's
 - `RuleBasedAIProvider` supports English/Russian/Arabic deterministically:
   script-based Unicode detection (no model, no network) for
   `detect_language`, and a small localized phrase table for
-  `compose_reply`'s scaffolding (greeting, "thanks for contacting us",
-  "still needed", etc.). It does **not** translate schema-driven content
-  (complaint labels, field labels/descriptions from the YAML schemas) - only
-  the surrounding natural-language scaffold is localized. Real translation
-  of arbitrary business content needs a model; that's `OllamaAIProvider`,
-  which receives the resolved language via `ReplyRequest.language_code` and
-  is instructed (`prompts/reply.jinja`) to write the entire reply in it.
+  `compose_reply`'s scaffolding (greeting, corrections intro, footer, etc.)
+  plus a per-field question table (see "One field at a time" below). It does
+  **not** translate schema-driven content (complaint labels, field
+  labels/descriptions from the YAML schemas) - only the surrounding
+  natural-language text is localized. Real translation of arbitrary business
+  content needs a model; that's `OllamaAIProvider`, which receives the
+  resolved language via `ReplyRequest.language_code` and is instructed
+  (`prompts/reply.jinja`) to write the entire reply in it.
+- Plain Latin/ASCII text is deliberately weak, slow-growing evidence for
+  `detect_language`'s `"en"` result (unlike Arabic/Cyrillic, which are
+  confident on any occurrence) - a short reply that is little more than a
+  copied field label and a code (e.g. `"transaction id: TXN-9f3a12bc"`,
+  exactly what our own field extraction requires the customer to send) must
+  not out-vote an established Arabic/Russian conversation and flip the final
+  ticket confirmation into English. Because English is also the engine's
+  ultimate default when nothing is confident, this asymmetry never hurts a
+  real English conversation - see
+  `tests/test_one_field_at_a_time.py::test_ticket_confirmation_stays_in_arabic_even_when_last_answer_is_pure_latin`.
 - This only changes *how* the reply is phrased. Classification, required
   fields, completeness, and ticket creation are entirely unaffected - see
   `tests/test_multilingual_replies.py`.
+
+### One field at a time
+
+The customer is asked for exactly one missing required field per message,
+never a bulleted list:
+
+- `ConversationEngine.advance` computes the full `missing` list in schema
+  order (via `_classify_fields`, which walks `schema.fields_for()` in YAML
+  declaration order) but only ever passes `missing[:1]` into the ASK
+  `ReplyRequest` - the engine decides *which* field is next; the AI/provider
+  layer decides *how* to phrase asking for it. `outcome.missing_fields` (and
+  therefore the API's `IntakeResult.missing_fields`) still reports the full
+  remaining set, unchanged - only the customer-facing `reply_body` is
+  restricted to one field.
+- `RuleBasedAIProvider._FIELD_QUESTION_PHRASES` maps each field's internal
+  `key` (never renamed, never exposed to the customer) to a natural,
+  standalone question per supported language, with a generic templated
+  fallback for any field key not in the table. There is no
+  `if language == "..."` branching in the engine - only this presentation
+  table, keyed by field key and language, decides wording.
+  `OllamaAIProvider`'s prompt (`prompts/reply.jinja`) is instructed to ask
+  about exactly the one field the engine listed, in one natural sentence,
+  never a list.
+- If the customer supplies several fields in one message, extraction (which
+  this work does not change) picks up all of them; the next question is
+  simply whichever field is now earliest-in-schema-order among what's still
+  missing - see `tests/test_one_field_at_a_time.py`.
 
 ## Adding / changing a complaint type
 

@@ -44,7 +44,10 @@ def test_english_message_gets_english_response(client):
     )
     assert result["complaint_type"] == "withdrawal"
     assert result["conversation"]["language_code"] == "en"
-    assert "Thanks for getting in touch" in result["reply_body"]
+    # One field at a time (see test_one_field_at_a_time.py): the first ask is
+    # the schema's first missing field, user_id, and nothing else.
+    assert "user ID" in result["reply_body"]
+    assert "email" not in result["reply_body"].lower()
 
 
 def test_russian_message_gets_russian_response(client):
@@ -55,8 +58,7 @@ def test_russian_message_gets_russian_response(client):
     )
     assert result["complaint_type"] == "withdrawal"
     assert result["conversation"]["language_code"] == "ru"
-    assert "Здравствуйте" in result["reply_body"]
-    assert "Спасибо" in result["reply_body"]
+    assert "ID пользователя" in result["reply_body"]
 
 
 def test_arabic_message_gets_arabic_response(client):
@@ -67,8 +69,7 @@ def test_arabic_message_gets_arabic_response(client):
     )
     assert result["complaint_type"] == "withdrawal"
     assert result["conversation"]["language_code"] == "ar"
-    assert "مرحبًا" in result["reply_body"]
-    assert "شكرًا" in result["reply_body"]
+    assert "المستخدم" in result["reply_body"]
 
 
 # ------------------------------------------------------------------------- D
@@ -79,7 +80,7 @@ def test_multi_turn_arabic_conversation_stays_arabic(client):
     r1 = send(client, "مرحبا، لدي مشكلة في سحب الأموال.", from_addr=addr)
     cid = r1["conversation"]["id"]
     assert r1["conversation"]["language_code"] == "ar"
-    assert "مرحبًا" in r1["reply_body"]
+    assert "المستخدم" in r1["reply_body"]  # asks for user_id first, in schema order
 
     r2 = send(
         client,
@@ -88,7 +89,10 @@ def test_multi_turn_arabic_conversation_stays_arabic(client):
         from_addr=addr,
     )
     assert r2["conversation"]["language_code"] == "ar"
-    assert "مرحبًا" in r2["reply_body"]
+    # user_id is still the earliest missing field in schema order, so the
+    # engine keeps asking for it even though the customer just supplied a
+    # later field (account_email) instead.
+    assert "المستخدم" in r2["reply_body"]
     # structured extraction is untouched by the language work - the email is
     # still captured verbatim regardless of the surrounding Arabic text.
     complaint = r2["conversation"]["complaint"]
@@ -110,6 +114,8 @@ def test_language_switches_to_latest_message_then_sticks_on_ambiguous_input(clie
     assert r1["conversation"]["language_code"] == "en"
 
     # Customer switches to Russian - the reply must follow the latest message.
+    # This message supplies account_email, but user_id (earlier in schema
+    # order) is still missing, so the engine keeps asking for that.
     r2 = send(
         client,
         "У меня есть данные: мой email jane.doe@example.com",
@@ -117,13 +123,14 @@ def test_language_switches_to_latest_message_then_sticks_on_ambiguous_input(clie
         from_addr=addr,
     )
     assert r2["conversation"]["language_code"] == "ru"
-    assert "Здравствуйте" in r2["reply_body"]
+    assert "ID пользователя" in r2["reply_body"]
 
     # A message with no language signal at all (digits only) must not reset
     # the conversation to the default language - it keeps the last known one.
+    # It also doesn't match the user_id pattern, so the same field is asked.
     r3 = send(client, "482913", conversation_id=cid, from_addr=addr)
     assert r3["conversation"]["language_code"] == "ru"
-    assert "Здравствуйте" in r3["reply_body"]
+    assert "ID пользователя" in r3["reply_body"]
 
 
 # --------------------------------------------------------- ticket creation still works

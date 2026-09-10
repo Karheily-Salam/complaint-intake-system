@@ -125,7 +125,12 @@ class ConversationEngine:
                 complaint_label=schema.label,
                 customer_name=state.customer_name,
                 language_code=outcome.language_code,
-                missing_fields=missing,
+                # Ask about exactly one missing field per message, in schema
+                # order (`missing` is already ordered that way - see
+                # _classify_fields). `outcome.missing_fields` above still
+                # reports the *full* remaining set for the API/UI; this is
+                # only what the customer-facing reply may mention.
+                missing_fields=missing[:1],
                 invalid_fields=[
                     InvalidField(
                         key=s.key,

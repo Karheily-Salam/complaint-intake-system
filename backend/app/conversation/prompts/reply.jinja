@@ -20,8 +20,9 @@ problem in more detail. Guidance for what to ask: {{ guidance }}
 Do not invent specific fields.
 
 {% else %}
-Purpose: ask the customer for the outstanding information below. Ask ONLY for
-these items. Do not ask for anything already provided.
+Purpose: ask the customer for the outstanding information below. Do not ask
+for anything already provided, and do not ask for or mention anything beyond
+what is listed here.
 
 {% if invalid_fields %}
 These details we received look wrong and need correcting:
@@ -30,7 +31,8 @@ These details we received look wrong and need correcting:
 {% endfor %}
 {% endif %}
 {% if missing_fields %}
-Still needed:
+Ask for exactly this one piece of information, in a single natural sentence
+(never a bulleted list, never more than one item, never a form):
 {% for f in missing_fields %}
 - {{ f.label }}: {{ f.description }}
 {% endfor %}

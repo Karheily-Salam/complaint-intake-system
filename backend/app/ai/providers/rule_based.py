@@ -114,15 +114,14 @@ _PHRASES: dict[str, dict[str, str]] = {
             "created a ticket for our team{ref}. We will be in touch shortly."
         ),
         "ref_suffix": " (reference {ref})",
-        "ask_intro": "Thanks for getting in touch about your {label}.",
         "invalid_intro": "Some details we received need correcting:",
-        "missing_intro": "To move this forward, could you please provide:",
         "footer": "You can reply in your own words - no need for a form.",
         "clarify_intro": (
             "Thanks for contacting us. We would like to help but need a little more "
             "detail first."
         ),
         "clarify_question": "Could you describe what happened and what went wrong?",
+        "ask_field_generic": "Could you please provide the following: {item}?",
     },
     "ru": {
         "greeting_named": "Здравствуйте, {name},",
@@ -133,15 +132,14 @@ _PHRASES: dict[str, dict[str, str]] = {
             "вами в ближайшее время."
         ),
         "ref_suffix": " (номер {ref})",
-        "ask_intro": "Спасибо, что обратились к нам по поводу «{label}».",
         "invalid_intro": "Некоторые из полученных данных нужно исправить:",
-        "missing_intro": "Чтобы продолжить, пожалуйста, предоставьте:",
         "footer": "Вы можете ответить своими словами - заполнять форму не нужно.",
         "clarify_intro": (
             "Спасибо, что написали нам. Мы хотим помочь, но сначала нужно немного "
             "больше деталей."
         ),
         "clarify_question": "Не могли бы вы описать, что произошло и что пошло не так?",
+        "ask_field_generic": "Пожалуйста, укажите следующее: {item}.",
     },
     "ar": {
         "greeting_named": "مرحبًا {name}،",
@@ -151,16 +149,75 @@ _PHRASES: dict[str, dict[str, str]] = {
             "تذكرة لفريقنا{ref}. سنتواصل معك قريبًا."
         ),
         "ref_suffix": " (المرجع {ref})",
-        "ask_intro": "شكرًا لتواصلك معنا بخصوص {label}.",
         "invalid_intro": "بعض التفاصيل التي استلمناها تحتاج إلى تصحيح:",
-        "missing_intro": "لإتمام الأمر، يرجى تزويدنا بما يلي:",
         "footer": "يمكنك الرد بأسلوبك الخاص - لا حاجة لتعبئة نموذج.",
         "clarify_intro": (
             "شكرًا لتواصلك معنا. نود مساعدتك، لكننا بحاجة إلى مزيد من التفاصيل أولاً."
         ),
         "clarify_question": "هل يمكنك وصف ما حدث وما الذي حدث بشكل خاطئ؟",
+        "ask_field_generic": "يرجى تزويدنا بما يلي: {item}.",
     },
 }
+
+# ---- one-field-at-a-time question phrasing --------------------------------
+# Keyed by internal field `key` (unchanged, never exposed to the customer) ->
+# a natural, standalone, single-sentence question per supported language.
+# This is presentation vocabulary the AI layer owns, not business logic: the
+# engine (see ConversationEngine.advance / _classify_fields) is what decides
+# WHICH single field is still missing and asks for it, in schema order, one
+# per turn - this table only decides HOW to phrase that one field's question.
+# A key not listed here (e.g. a future schema field) falls back to
+# `_PHRASES[lang]["ask_field_generic"]` built from the field's own
+# label/description, so this never raises for an unknown key.
+_FIELD_QUESTION_PHRASES: dict[str, dict[str, str]] = {
+    "en": {
+        "user_id": "Please provide your user ID.",
+        "account_email": "Please provide the email address registered on your account.",
+        "withdrawal_transaction_id": "Please provide the withdrawal transaction ID.",
+        "source_wallet_or_account": "Please let us know which wallet or account you used.",
+        "transaction_date": "Please let us know the date of the transaction.",
+        "deposit_method": (
+            "Please let us know how you made the deposit (e.g. bank transfer, card, "
+            "or e-wallet)."
+        ),
+        "problem_description": "Please describe what happened in a bit more detail.",
+    },
+    "ru": {
+        "user_id": "Пожалуйста, укажите ваш ID пользователя.",
+        "account_email": "Пожалуйста, укажите email, привязанный к вашему аккаунту.",
+        "withdrawal_transaction_id": "Пожалуйста, укажите номер транзакции вывода средств.",
+        "source_wallet_or_account": (
+            "Пожалуйста, укажите, с какого кошелька или счёта вы производили операцию."
+        ),
+        "transaction_date": "Пожалуйста, укажите дату операции.",
+        "deposit_method": (
+            "Пожалуйста, укажите способ внесения депозита (например, банковский "
+            "перевод, карта или электронный кошелёк)."
+        ),
+        "problem_description": "Пожалуйста, опишите подробнее, что произошло.",
+    },
+    "ar": {
+        "user_id": "عزيزي المستخدم، يرجى تزويدنا برقم المستخدم الخاص بحسابك.",
+        "account_email": "يرجى تزويدنا بالبريد الإلكتروني المرتبط بحسابك.",
+        "withdrawal_transaction_id": "يرجى تزويدنا برقم عملية السحب.",
+        "source_wallet_or_account": "يرجى إخبارنا بالمحفظة أو الحساب الذي استخدمته.",
+        "transaction_date": "يرجى تزويدنا بتاريخ العملية.",
+        "deposit_method": (
+            "يرجى إخبارنا بطريقة الإيداع التي استخدمتها (مثل التحويل البنكي أو "
+            "البطاقة أو المحفظة الإلكترونية)."
+        ),
+        "problem_description": "يرجى وصف ما حدث بمزيد من التفاصيل.",
+    },
+}
+
+
+def _field_question(spec: FieldSpec, language_code: str) -> str:
+    table = _FIELD_QUESTION_PHRASES.get(language_code, _FIELD_QUESTION_PHRASES[_DEFAULT_LANGUAGE])
+    phrase = table.get(spec.key)
+    if phrase:
+        return phrase
+    generic = _PHRASES.get(language_code, _PHRASES[_DEFAULT_LANGUAGE])["ask_field_generic"]
+    return generic.format(item=spec.description or spec.label)
 
 
 class RuleBasedAIProvider(AIProvider):
@@ -249,8 +306,24 @@ class RuleBasedAIProvider(AIProvider):
         if cyrillic > 0:
             return LanguageDetection(code="ru", confidence=min(0.75 + 0.03 * cyrillic, 0.99))
         if latin > 0:
+            # Deliberately slow-growing and low-baseline compared to
+            # Arabic/Cyrillic above: a short reply that is little more than
+            # a copied field label and a code (e.g. "transaction id:
+            # TXN-9f3a12bc") is exactly the kind of message our own
+            # regex-based field extraction requires the customer to send
+            # (see _USER_ID_RE / _TXN_RE), so it must NOT count as confident
+            # evidence that an otherwise Arabic/Russian conversation just
+            # switched to English - it should fall below
+            # `settings.min_language_confidence` and let the engine keep the
+            # conversation's established language. Only a message with
+            # substantially more Latin text than that (genuine English
+            # prose) clears the bar. Because English is also the engine's
+            # ultimate default when nothing is confident, an English message
+            # that fails to clear this bar still resolves correctly via that
+            # default/previous-language fallback - so this asymmetry has no
+            # downside for real English conversations.
             return LanguageDetection(
-                code=_DEFAULT_LANGUAGE, confidence=min(0.6 + 0.02 * latin, 0.99)
+                code=_DEFAULT_LANGUAGE, confidence=min(0.25 + 0.01 * latin, 0.95)
             )
         return LanguageDetection(code=None, confidence=0.0)
 
@@ -284,17 +357,26 @@ class RuleBasedAIProvider(AIProvider):
             return ReplyDraft(body=body)
 
         # ASK
-        parts = [f"{greeting}\n", p["ask_intro"].format(label=label)]
-        if request.invalid_fields:
-            parts.append(f"\n{p['invalid_intro']}")
-            parts.extend(f"  - {f.label}: {f.error}" for f in request.invalid_fields)
+        if request.missing_fields and not request.invalid_fields:
+            # The engine guarantees at most one entry here - see
+            # ConversationEngine.advance, which asks for exactly one missing
+            # field per turn, in schema order. A short, standalone, natural
+            # question: no greeting scaffold, no bullet list - this should
+            # read like a reply in an email thread, not a form.
+            question = _field_question(request.missing_fields[0], request.language_code)
+            return ReplyDraft(body=f"{question}\n")
+
+        # A value the customer already gave needs correcting (optionally
+        # alongside the next missing field) - this still benefits from a
+        # little more framing than a single bare question.
+        parts = [greeting, "", p["invalid_intro"]]
+        parts.extend(f"  - {f.label}: {f.error}" for f in request.invalid_fields)
         if request.missing_fields:
-            parts.append(f"\n{p['missing_intro']}")
-            parts.extend(
-                f"  - {s.label}: {s.description}".rstrip() for s in request.missing_fields
-            )
-        parts.append(f"\n{p['footer']}\n")
-        return ReplyDraft(body="\n".join(parts))
+            parts.append("")
+            parts.append(_field_question(request.missing_fields[0], request.language_code))
+        parts.append("")
+        parts.append(p["footer"])
+        return ReplyDraft(body="\n".join(parts) + "\n")
 
     # ---- helpers ----
 
