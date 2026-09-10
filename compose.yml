@@ -2,9 +2,17 @@
 #
 #   docker compose up --build        -> http://localhost/
 #
-# Works on a clean clone with no configuration: the defaults below are enough
-# for a demo (mock email, no mailbox, no credentials). A real deployment adds
-# ./backend/.env, which is git-ignored and overrides anything here.
+# Works on a clean clone with no configuration: the application's own defaults
+# (app/core/config.py) are demo-safe - mock email, rule-based AI, no mailbox,
+# no credentials. A real deployment adds ./backend/.env, which is git-ignored.
+#
+# There is deliberately no `environment:` block here. Compose gives it higher
+# precedence than `env_file:`, so defaults written there silently override a
+# real deployment's backend/.env - which on this project set ENVIRONMENT back
+# to "local" and, worse, planted a publicly-known STAFF_API_KEY on production
+# and would have forced EMAIL_PROVIDER back to "mock" once a real mailbox was
+# configured. Configuration belongs in backend/.env or in the application
+# defaults, never here.
 #
 # Only the frontend (Nginx) is published, on host port 80. FastAPI is reachable
 # only on the internal compose network as "backend:8000".
@@ -20,18 +28,6 @@ services:
       # git-ignored and so never exists on a first checkout.
       - path: ./backend/.env
         required: false
-    environment:
-      # Demo-safe defaults; every one is overridden by backend/.env when present.
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/complaint_intake.db}
-      RUN_MIGRATIONS_ON_STARTUP: ${RUN_MIGRATIONS_ON_STARTUP:-true}
-      AI_PROVIDER: ${AI_PROVIDER:-rule_based}
-      # Never a real mailbox by default - a clone must not be able to send mail.
-      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-mock}
-      ENVIRONMENT: ${ENVIRONMENT:-local}
-      DEBUG: ${DEBUG:-false}
-      # Not a secret: it only unlocks the staff API on a throwaway local demo.
-      # Production sets a generated value in backend/.env.
-      STAFF_API_KEY: ${STAFF_API_KEY:-local-demo-key}
     volumes:
       # Persist the SQLite database (DATABASE_URL=sqlite:////app/data/complaint_intake.db).
       - backend_data:/app/data
