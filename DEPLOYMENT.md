@@ -1,5 +1,9 @@
 # Deployment
 
+This covers building/running *this* project. For the shared VPS itself
+(SSH/firewall model, the `deploy` user, backups, multi-project layout,
+monitoring, HTTPS readiness) see [`SERVER.md`](SERVER.md).
+
 The stack is two containers, orchestrated by `compose.yml`:
 
 | Service    | Image base            | Published        | Role |

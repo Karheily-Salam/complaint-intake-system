@@ -30,6 +30,16 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    # Safety net, not a real-world constraint: this service typically uses
+    # ~60MB. The host has 2GB RAM shared with other future projects, so a
+    # runaway leak in any one service should not be able to take the whole
+    # box down. Raise if a real workload ever needs more.
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
 
   frontend:
     build: ./frontend
@@ -40,6 +50,12 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
 
 volumes:
   backend_data:
