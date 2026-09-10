@@ -86,10 +86,12 @@ class IntakeService:
             customer_name=customer.name,
             inbound_transcript=self.conversations.inbound_bodies(conversation),
             language_code=conversation.language_code,
+            pending_field=conversation.pending_field,
         )
 
         outcome = await self.engine.advance(state)
         conversation.language_code = outcome.language_code
+        conversation.pending_field = outcome.pending_field
 
         # ---- persist engine outcome ----
         if outcome.complaint_type and not complaint.type:

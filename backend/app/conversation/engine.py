@@ -75,7 +75,9 @@ class ConversationEngine:
 
         # ---- 3. extraction against this complaint's (flat) field set ----
         specs = schema.fields_for()
-        current = await self._extract_and_merge(state.latest_message, specs, current)
+        current = await self._extract_and_merge(
+            state.latest_message, specs, current, state.pending_field
+        )
 
         # deposit_method (if the schema has one) is captured verbatim - the engine
         # does not interpret it or let it change the required field set.
@@ -115,6 +117,11 @@ class ConversationEngine:
             # ticket creation has actually succeeded, so the confirmation can
             # include the real reference instead of omitting or inventing it.
             return outcome
+
+        # The single field the *next* inbound message should be interpreted
+        # as primarily answering - the exact same selection already made for
+        # `missing_fields` below, not a separate decision.
+        outcome.pending_field = missing[0].key if missing else None
 
         outcome.next_status = ConversationStatus.COLLECTING_INFO
         outcome.reply = await self._ai.compose_reply(
@@ -186,9 +193,10 @@ class ConversationEngine:
         message: str,
         specs: list[FieldSpec],
         current: dict[str, FieldOutcome],
+        pending_field: str | None,
     ) -> dict[str, FieldOutcome]:
         known = {k: fo.value for k, fo in current.items() if fo.is_present and fo.value}
-        extraction = await self._ai.extract(message, specs, known)
+        extraction = await self._ai.extract(message, specs, known, pending_field=pending_field)
         spec_by_key = {s.key: s for s in specs}
         result = dict(current)
 
@@ -248,6 +256,7 @@ class ConversationEngine:
         outcome.complaint_type = None
         outcome.awaiting_clarification = True
         outcome.next_status = ConversationStatus.OPEN
+        outcome.pending_field = None  # asking about the complaint type, not a schema field
         outcome.fields = [FieldOutcome(f.key, f.value, f.status) for f in state.collected]
         outcome.reply = await self._ai.compose_reply(
             ReplyRequest(
@@ -276,6 +285,7 @@ class ConversationEngine:
         outcome.missing_fields = [
             s for s in schema.fields_for() if s.key == _PROBLEM_DESCRIPTION_KEY
         ]
+        outcome.pending_field = _PROBLEM_DESCRIPTION_KEY
         outcome.awaiting_clarification = True
         outcome.next_status = ConversationStatus.COLLECTING_INFO
         outcome.reply = await self._ai.compose_reply(

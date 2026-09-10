@@ -37,6 +37,13 @@ class ConversationState:
     # new conversation). The engine falls back to this when the latest
     # message has no reliable language signal of its own.
     language_code: str | None = None
+    # The single field key the *previous* outbound message asked the
+    # customer for (None if nothing specific was pending). This is an email
+    # conversation, not a sequence of independent messages: the latest
+    # message is handed to extraction together with this context so it can
+    # be interpreted primarily as an answer to that field - see
+    # ConversationEngine._extract_and_merge.
+    pending_field: str | None = None
 
     def by_key(self) -> dict[str, CollectedField]:
         return {f.key: f for f in self.collected}
@@ -87,3 +94,9 @@ class EngineOutcome:
     # Resolved language for this turn (see ConversationEngine._resolve_language) -
     # persisted onto the conversation so the next turn can fall back to it.
     language_code: str = "en"
+    # The single field key this turn's outbound message asks about (mirrors
+    # `missing[:1]` from ConversationEngine.advance; None once complete, or
+    # while classification/clarification is unresolved). Persisted onto the
+    # conversation so the *next* inbound message's extraction knows what it
+    # is most likely answering - see ConversationState.pending_field.
+    pending_field: str | None = None

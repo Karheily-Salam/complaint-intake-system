@@ -44,6 +44,7 @@ class ConversationOut(ORMModel):
     subject: str | None
     status: str
     language_code: str | None = None
+    pending_field: str | None = None
     created_at: datetime
     updated_at: datetime
     complaint: ComplaintOut | None = None

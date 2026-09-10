@@ -109,6 +109,7 @@ class OllamaAIProvider(AIProvider):
         message: str,
         specs: list[FieldSpec],
         known: dict[str, str] | None = None,
+        pending_field: str | None = None,
     ) -> ExtractionResult:
         known = known or {}
 
@@ -118,6 +119,7 @@ class OllamaAIProvider(AIProvider):
                 message=message,
                 fields=[_field_view(s) for s in specs],
                 known=known,
+                pending_field=pending_field,
             )
             data = await self._generate_json(prompt)
             allowed = {s.key for s in specs}
@@ -145,7 +147,7 @@ class OllamaAIProvider(AIProvider):
             return ExtractionResult(fields=out)
 
         return await self._call(
-            "extract", primary, lambda fb: fb.extract(message, specs, known)
+            "extract", primary, lambda fb: fb.extract(message, specs, known, pending_field)
         )
 
     async def summarize(self, transcript: list[str]) -> str:

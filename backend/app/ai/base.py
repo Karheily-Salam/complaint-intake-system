@@ -129,12 +129,22 @@ class AIProvider(ABC):
         message: str,
         specs: list[FieldSpec],
         known: dict[str, str] | None = None,
+        pending_field: str | None = None,
     ) -> ExtractionResult:
         """Extract values for ``specs`` that are explicitly supported by ``message``.
 
         ``known`` holds already-validated fields. A provider may return a field
         that is already in ``known`` only if the message provides a *different*
         (corrected) value. It must never fabricate or guess a value.
+
+        ``pending_field`` is the single field key the engine's most recent
+        outbound message asked the customer for (``None`` if nothing specific
+        was pending - e.g. the very first message, or after a clarification).
+        This is an email conversation, not a sequence of independent
+        messages: when set, the customer's reply should be interpreted
+        *primarily* as an answer to this field - including a bare value with
+        no label at all (e.g. just "583921") - without preventing extraction
+        of any other field the message clearly also contains.
         """
 
     @abstractmethod

@@ -30,6 +30,12 @@ class Conversation(Base, TimestampMixin):
     # (see ConversationEngine._resolve_language). Null until the first inbound
     # message is processed.
     language_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # The single complaint-field key the most recent outbound message asked
+    # the customer for (see ConversationEngine.advance's `pending_field`).
+    # Null once the complaint is complete, or while classification/vague-
+    # complaint clarification is unresolved. Used to interpret the next
+    # inbound message primarily as an answer to this field.
+    pending_field: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="conversations")
     messages: Mapped[list[Message]] = relationship(

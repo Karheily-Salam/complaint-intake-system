@@ -22,6 +22,16 @@ correcting them with a different value):
 - (none)
 {% endfor %}
 
+{% if pending_field %}
+This is an ongoing email conversation, not an isolated message: your last
+outbound message asked the customer specifically for "{{ pending_field }}".
+Interpret their reply primarily as an answer to that field - including a
+bare value with no label at all (e.g. just a number or a short phrase) - and
+extract it as "{{ pending_field }}" if it plausibly answers that field, even
+without an explicit keyword. Still extract any OTHER field the message also
+clearly and separately states.
+{% endif %}
+
 Customer message (may be long and unstructured):
 \"\"\"
 {{ message }}

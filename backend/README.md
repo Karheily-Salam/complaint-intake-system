@@ -126,10 +126,48 @@ never a bulleted list:
   `OllamaAIProvider`'s prompt (`prompts/reply.jinja`) is instructed to ask
   about exactly the one field the engine listed, in one natural sentence,
   never a list.
-- If the customer supplies several fields in one message, extraction (which
-  this work does not change) picks up all of them; the next question is
-  simply whichever field is now earliest-in-schema-order among what's still
-  missing - see `tests/test_one_field_at_a_time.py`.
+- If the customer supplies several fields in one message, extraction picks up
+  all of them; the next question is simply whichever field is now
+  earliest-in-schema-order among what's still missing - see
+  `tests/test_one_field_at_a_time.py`.
+
+### Pending field (contextual answers)
+
+This is an email conversation, not a sequence of independent messages: a
+bare reply like `"583921"` to "please provide your user ID" must be
+interpreted as that user ID, not require the customer to repeat the field's
+name, and this must work for every required field and in every supported
+language.
+
+- `ConversationEngine.advance` sets `outcome.pending_field` from the exact
+  same `missing[0]` already used for the ASK reply (no duplicate
+  field-selection logic), and `IntakeService` persists it onto
+  `Conversation.pending_field` (see the `add conversation pending_field`
+  migration) so the *next* inbound message's `ConversationState.pending_field`
+  carries it forward.
+- `AIProvider.extract(..., pending_field=...)` receives it. In
+  `RuleBasedAIProvider`, the existing per-field extractors (labels, email,
+  numeric dates, ...) always run first and are never overridden; the pending
+  field is only a **fallback** for whichever one field they left unresolved,
+  dispatched purely on the field's declared `type`/key shape - never on
+  which specific field it is:
+  - identifier-shaped fields (`user_id`, `withdrawal_transaction_id`, ...) -
+    the first digit-bearing token anywhere in the message
+    (`_first_value_token`) - never a bare word like "hello", so an
+    unanswerable reply correctly leaves the field missing and the same
+    question is asked again;
+  - `DATE` fields - a small multilingual month-name parser
+    (`_parse_natural_date`) for phrasing like "8 September" / "8 сентября" /
+    "8 سبتمبر" with no numeric format at all;
+  - free-text fields (`deposit_method`, `source_wallet_or_account`) - the
+    whole message, unless it's just a greeting/acknowledgement
+    (`_is_pure_filler`).
+  `OllamaAIProvider` instead just tells the model which field was pending
+  (`prompts/extract.jinja`) and lets it interpret the reply naturally.
+- The engine still owns completeness and ticket creation entirely from the
+  deterministic missing/invalid computation - `pending_field` only feeds
+  extraction, exactly like `known` already does.
+- See `tests/test_pending_field_context.py`.
 
 ## Adding / changing a complaint type
 

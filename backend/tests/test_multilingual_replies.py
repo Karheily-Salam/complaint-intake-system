@@ -125,12 +125,19 @@ def test_language_switches_to_latest_message_then_sticks_on_ambiguous_input(clie
     assert r2["conversation"]["language_code"] == "ru"
     assert "ID пользователя" in r2["reply_body"]
 
-    # A message with no language signal at all (digits only) must not reset
-    # the conversation to the default language - it keeps the last known one.
-    # It also doesn't match the user_id pattern, so the same field is asked.
-    r3 = send(client, "482913", conversation_id=cid, from_addr=addr)
+    # A message with no language signal at all (no letters, no digits) must
+    # not reset the conversation to the default language - it keeps the last
+    # known one - and extracts nothing, so the same field is asked again.
+    r3 = send(client, "...", conversation_id=cid, from_addr=addr)
     assert r3["conversation"]["language_code"] == "ru"
     assert "ID пользователя" in r3["reply_body"]
+
+    # A bare numeric reply to the pending user_id question is now correctly
+    # interpreted as the answer (see ConversationState.pending_field) - the
+    # conversation moves on to the next field, still in Russian.
+    r4 = send(client, "482913", conversation_id=cid, from_addr=addr)
+    assert r4["conversation"]["language_code"] == "ru"
+    assert "номер транзакции вывода" in r4["reply_body"]
 
 
 # --------------------------------------------------------- ticket creation still works

@@ -36,7 +36,7 @@ class ScriptedAI(AIProvider):
     async def classify(self, message, options):
         return self.classification
 
-    async def extract(self, message, specs, known=None):
+    async def extract(self, message, specs, known=None, pending_field=None):
         return self.extractions.pop(0) if self.extractions else ExtractionResult()
 
     async def summarize(self, transcript):

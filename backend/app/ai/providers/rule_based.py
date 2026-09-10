@@ -12,6 +12,7 @@ message (only whitespace-trimmed).
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from app.ai.base import (
     AIProvider,
@@ -86,6 +87,111 @@ _TXN_RE = re.compile(
     re.IGNORECASE,
 )
 _DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})\b")
+
+# ---- pending-field contextual fallback -------------------------------------
+# This is an email conversation, not a sequence of independent messages: when
+# the previous outbound message asked for one specific field (see
+# ConversationEngine.advance's `pending_field`), the customer's reply is
+# interpreted primarily as an answer to THAT field if nothing more specific
+# claimed it above. This is type/shape-driven (see _pending_field_fallback),
+# never a per-field special case.
+
+
+def _looks_transaction_related(key: str) -> bool:
+    """True only for fields that are actually about a transaction/reference
+    (e.g. withdrawal_transaction_id) - used to decide whether `_TXN_RE`'s
+    transaction-specific trigger words are relevant to this field at all.
+    Deliberately narrower than :func:`_is_identifier_like_key` below: a field
+    merely ending in "_id" (like ``user_id``) is not transaction-related, and
+    must never have a transaction mention elsewhere in the message stolen
+    for it.
+    """
+    return any(tok in key for tok in ("transaction", "txn", "hash", "reference", "ref"))
+
+
+def _is_identifier_like_key(key: str) -> bool:
+    """True for short-code fields (user_id, withdrawal_transaction_id, ...) as
+    opposed to free-text fields (deposit_method, source_wallet_or_account).
+
+    Broader than :func:`_looks_transaction_related` on purpose: this only
+    decides whether the *pending-field* fallback should look for a generic
+    digit-bearing token (never which other field's regex to try), so there is
+    no cross-field contamination risk in being inclusive here.
+    """
+    return key.endswith("_id") or _looks_transaction_related(key)
+
+
+# A bare value with no label at all - e.g. just "583921" - could be a user id,
+# a transaction id, an amount, anything. Only the pending field tells us
+# which. Requires at least one digit so plain words ("hello", "yes", "ID")
+# are never mistaken for a code; the FIRST such token is used (the customer's
+# earliest, most direct answer to what was just asked, matching the "primary
+# response to the most recent request" principle even when a later part of
+# the same message goes on to mention something else numeric).
+_VALUE_TOKEN_RE = re.compile(r"\b[A-Za-z0-9][A-Za-z0-9\-]{1,63}\b")
+
+
+def _first_value_token(message: str) -> str | None:
+    for m in _VALUE_TOKEN_RE.finditer(message):
+        token = m.group(0)
+        if any(ch.isdigit() for ch in token):
+            return token
+    return None
+
+
+# Common short greetings/acknowledgements in the three supported languages -
+# generic conversational filler, not a specific field's business vocabulary.
+# Guards the free-text fallback (deposit_method, source_wallet_or_account)
+# from mistaking a non-answer for an answer, the same way `_first_value_token`
+# requiring a digit guards the identifier fallback.
+_FILLER_REPLIES = {
+    "hello", "hi", "hey", "hiya", "yes", "no", "ok", "okay", "thanks", "thank you",
+    "مرحبا", "مرحباً", "اهلا", "أهلا", "نعم", "لا", "شكرا", "شكراً",
+    "привет", "здравствуйте", "да", "нет", "спасибо", "ок",
+}
+
+
+def _is_pure_filler(cleaned_message: str) -> bool:
+    normalized = cleaned_message.strip(" .!؟?,،-").lower()
+    return not normalized or normalized in _FILLER_REPLIES or not any(
+        ch.isalnum() for ch in normalized
+    )
+
+
+# Minimal multilingual month-name table so a natural date like "8 September" /
+# "8 сентября" / "8 سبتمبر" resolves even without a numeric date format -
+# the schema's own extraction_hint already asks for this ("accept relative
+# references like 'yesterday' if resolvable"). No year is ever stated in
+# these phrasings, so the current year is assumed.
+_MONTH_NAMES: dict[str, int] = {
+    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
+    "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
+    "august": 8, "aug": 8, "september": 9, "sep": 9, "sept": 9,
+    "october": 10, "oct": 10, "november": 11, "nov": 11, "december": 12, "dec": 12,
+    "января": 1, "январь": 1, "февраля": 2, "февраль": 2, "марта": 3, "март": 3,
+    "апреля": 4, "апрель": 4, "мая": 5, "май": 5, "июня": 6, "июнь": 6,
+    "июля": 7, "июль": 7, "августа": 8, "август": 8, "сентября": 9, "сентябрь": 9,
+    "октября": 10, "октябрь": 10, "ноября": 11, "ноябрь": 11, "декабря": 12, "декабрь": 12,
+    "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "ابريل": 4, "مايو": 5,
+    "يونيو": 6, "يوليو": 7, "أغسطس": 8, "اغسطس": 8, "سبتمبر": 9,
+    "أكتوبر": 10, "اكتوبر": 10, "نوفمبر": 11, "ديسمبر": 12,
+}
+_DATE_WORD_RE = re.compile(r"[^\s,،.]+")
+
+
+def _parse_natural_date(message: str) -> str | None:
+    words = _DATE_WORD_RE.findall(message)
+    for i, word in enumerate(words):
+        month = _MONTH_NAMES.get(word.strip(".,،").lower())
+        if month is None:
+            continue
+        for j in (i - 1, i + 1):
+            if 0 <= j < len(words):
+                digits = re.sub(r"\D", "", words[j])
+                if digits and 1 <= int(digits) <= 31:
+                    year = date.today().year
+                    return f"{year:04d}-{month:02d}-{int(digits):02d}"
+    return None
 
 # ---- language detection --------------------------------------------------
 # Script-based heuristic: no model, no network - just Unicode block counting.
@@ -260,9 +366,11 @@ class RuleBasedAIProvider(AIProvider):
         message: str,
         specs: list[FieldSpec],
         known: dict[str, str] | None = None,
+        pending_field: str | None = None,
     ) -> ExtractionResult:
         known = known or {}
         found: list[ExtractedField] = []
+        resolved_keys: set[str] = set()
         for spec in specs:
             # ``known`` only ever holds already-validated values. This offline
             # provider does not attempt to re-detect corrections to fields that are
@@ -274,7 +382,50 @@ class RuleBasedAIProvider(AIProvider):
             value = self._extract_one(spec, message)
             if value:
                 found.append(ExtractedField(key=spec.key, value=value, confidence=0.6))
+                resolved_keys.add(spec.key)
+
+        # Contextual fallback: the previous outbound message asked
+        # specifically for `pending_field`. If nothing above already
+        # resolved it (no label, no type-specific pattern - e.g. a bare
+        # "583921" or a natural sentence with no recognizable keyword),
+        # interpret the customer's reply primarily as the answer to that one
+        # field. This never overrides a value found above, and never blocks
+        # any other field also found above - it only fills in the one field
+        # nothing else claimed.
+        if pending_field and pending_field not in resolved_keys and not known.get(pending_field):
+            pending_spec = next((s for s in specs if s.key == pending_field), None)
+            if pending_spec is not None:
+                value = self._pending_field_fallback(pending_spec, message)
+                if value:
+                    found.append(
+                        ExtractedField(key=pending_spec.key, value=value, confidence=0.55)
+                    )
+
         return ExtractionResult(fields=found)
+
+    def _pending_field_fallback(self, spec: FieldSpec, message: str) -> str | None:
+        """Best-effort value for `spec` when it is the pending field and no
+        more specific extractor (label, email, numeric date, ...) matched.
+
+        Dispatches purely on the field's declared `type`/key shape - never on
+        which specific field this is - so the same logic applies to every
+        required field, present or future.
+        """
+        if spec.type == FieldType.EMAIL:
+            return None  # the unconditional email pass above already covers this
+        if spec.type == FieldType.DATE:
+            return _parse_natural_date(message)
+        if spec.type == FieldType.TEXT:
+            return None  # already has its own unconditional whole-message fallback
+        if spec.type in (FieldType.STRING, FieldType.NUMBER):
+            if _is_identifier_like_key(spec.key):
+                return _first_value_token(message)
+            # Free-text field (e.g. deposit_method, source_wallet_or_account):
+            # the whole message is itself the answer, same idea as the
+            # existing TEXT-type fallback - unless it's just a greeting/ack.
+            cleaned = re.sub(r"\s+", " ", message).strip()
+            return None if _is_pure_filler(cleaned) else (cleaned or None)
+        return None
 
     async def summarize(self, transcript: list[str]) -> str:
         lines = [re.sub(r"\s+", " ", line).strip() for line in transcript if line and line.strip()]
@@ -397,10 +548,7 @@ class RuleBasedAIProvider(AIProvider):
             if m:
                 return m.group(1)
 
-        txn_like = spec.key.endswith("_id") or any(
-            tok in spec.key for tok in ("transaction", "txn", "hash")
-        )
-        if txn_like:
+        if _looks_transaction_related(spec.key):
             m = _TXN_RE.search(message)
             if m:
                 return m.group(1)
