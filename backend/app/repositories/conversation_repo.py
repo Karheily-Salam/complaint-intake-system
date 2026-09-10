@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -34,10 +36,30 @@ class ConversationRepository:
         )
 
     def create(self, customer_id: int, subject: str | None) -> Conversation:
-        convo = Conversation(customer_id=customer_id, subject=subject)
+        convo = Conversation(
+            customer_id=customer_id,
+            subject=subject,
+            thread_token=uuid.uuid4().hex[:16],
+        )
         self.db.add(convo)
         self.db.flush()
         return convo
+
+    def get_by_thread_token(self, thread_token: str) -> Conversation | None:
+        return self.db.scalar(
+            select(Conversation)
+            .where(Conversation.thread_token == thread_token)
+            .options(
+                selectinload(Conversation.messages),
+                selectinload(Conversation.complaint).selectinload(Complaint.fields),
+            )
+        )
+
+    def find_by_external_message_id(self, external_message_id: str) -> Message | None:
+        """Look up the message we recorded for a given real email Message-ID."""
+        return self.db.scalar(
+            select(Message).where(Message.external_message_id == external_message_id)
+        )
 
     def add_message(
         self,
@@ -49,6 +71,7 @@ class ConversationRepository:
         recipient: str | None = None,
         subject: str | None = None,
         raw_meta: dict | None = None,
+        external_message_id: str | None = None,
     ) -> Message:
         message = Message(
             conversation_id=conversation.id,
@@ -58,6 +81,7 @@ class ConversationRepository:
             subject=subject,
             body=body,
             raw_meta=raw_meta or {},
+            external_message_id=external_message_id,
         )
         self.db.add(message)
         self.db.flush()

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.core.migrations import run_migrations
 from app.domain.complaint_schemas.registry import get_registry
+from app.services.email_poller import EmailPoller
 
 logger = get_logger(__name__)
 
@@ -27,7 +29,27 @@ async def lifespan(app: FastAPI):
     logger.info(
         "AI provider: %s | Email provider: %s", settings.ai_provider, settings.email_provider
     )
-    yield
+
+    # Fail fast on a half-configured mail provider rather than discovering it
+    # on the first customer email. Only variable *names* are ever reported.
+    missing = settings.missing_email_settings()
+    if missing:
+        raise RuntimeError(
+            f"EMAIL_PROVIDER={settings.email_provider} is missing required "
+            f"configuration: {', '.join(missing)}"
+        )
+
+    poller_task: asyncio.Task | None = None
+    if settings.email_provider.lower() != "mock":
+        poller_task = asyncio.create_task(EmailPoller().run_forever())
+
+    try:
+        yield
+    finally:
+        if poller_task is not None:
+            poller_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await poller_task
 
 
 def create_app() -> FastAPI:

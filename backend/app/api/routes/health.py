@@ -19,5 +19,6 @@ async def health() -> HealthResponse:
         ai_provider=settings.ai_provider,
         ai_provider_available=await provider.available(),
         email_provider=settings.email_provider,
+        email_provider_configured=not settings.missing_email_settings(),
         complaint_types=get_registry().types(),
     )

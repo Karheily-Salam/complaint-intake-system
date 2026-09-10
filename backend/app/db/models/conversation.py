@@ -23,6 +23,16 @@ class Conversation(Base, TimestampMixin):
 
     channel: Mapped[str] = mapped_column(String(30), default="email", nullable=False)
     subject: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Opaque public reference for this thread, embedded in the subject line of
+    # every outbound email ("[Ref:AB12CD34]"). Threading is primarily done via
+    # the RFC 5322 Message-ID/In-Reply-To/References headers; this is the
+    # fallback for when a mail provider rewrites Message-IDs in transit, which
+    # would otherwise silently break the reply chain. Deliberately random
+    # rather than the row id, so nothing internal or enumerable is exposed to
+    # the customer.
+    thread_token: Mapped[str | None] = mapped_column(
+        String(32), unique=True, index=True, nullable=True
+    )
     status: Mapped[str] = mapped_column(
         String(30), default=ConversationStatus.OPEN, nullable=False, index=True
     )

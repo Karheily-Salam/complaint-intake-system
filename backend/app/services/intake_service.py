@@ -2,9 +2,22 @@
 
 This is the only place that wires together the email provider, the conversation
 engine and the database. The engine itself stays pure and stateless.
+
+Two entry points, one shared core:
+
+- :meth:`handle_inbound` - the local ``POST /inbox`` development simulator,
+  where the caller states which conversation to continue.
+- :meth:`handle_inbound_email` - a real email fetched from a mailbox by
+  :class:`~app.services.email_poller.EmailPoller`, where the conversation is
+  resolved from the message's own threading headers.
+
+Both run the identical engine/persistence/ticket path; only conversation
+resolution and the transport details of the outgoing reply differ.
 """
 
 from __future__ import annotations
+
+import re
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +29,9 @@ from app.core.logging import get_logger
 from app.db.models.complaint import Complaint
 from app.db.models.complaint_field import ComplaintField
 from app.db.models.conversation import Conversation
+from app.db.models.customer import Customer
 from app.db.models.email_log import EmailLog
+from app.db.models.ticket import Ticket
 from app.domain.complaint_schemas.registry import get_registry
 from app.domain.enums import (
     ComplaintStatus,
@@ -25,7 +40,7 @@ from app.domain.enums import (
     FieldStatus,
     MessageDirection,
 )
-from app.email.base import OutboundEmail
+from app.email.base import InboundEmail, OutboundEmail
 from app.email.factory import get_email_provider
 from app.repositories.conversation_repo import ConversationRepository
 from app.repositories.customer_repo import CustomerRepository
@@ -33,6 +48,9 @@ from app.schemas.conversation import InboundEmailIn, IntakeResult
 from app.services.ticket_service import TicketService
 
 logger = get_logger(__name__)
+
+# Matches the opaque thread reference embedded in every outbound subject line.
+_SUBJECT_REF_RE = re.compile(r"\[Ref:([0-9a-f]{4,32})\]", re.IGNORECASE)
 
 
 class IntakeService:
@@ -44,7 +62,10 @@ class IntakeService:
         self.engine = ConversationEngine(get_ai_provider(), self.registry)
         self.email = get_email_provider()
 
+    # ------------------------------------------------------------------ entry points
+
     async def handle_inbound(self, payload: InboundEmailIn) -> IntakeResult:
+        """Local development path (``POST /inbox``) - no real mailbox involved."""
         # Customer identity is the inbound email address only - never reconciled
         # against user_id or other values from the message body.
         customer = self.customers.get_or_create(payload.from_addr, payload.customer_name)
@@ -70,14 +91,118 @@ class IntakeService:
             body=payload.body,
         )
         self._log_email(
-            conversation, "inbound", payload.from_addr, settings.support_inbox_address,
-            payload.subject, payload.body,
+            conversation,
+            "inbound",
+            payload.from_addr,
+            settings.support_inbox_address,
+            payload.subject,
+            payload.body,
         )
 
         complaint = self.conversations.get_or_create_complaint(conversation)
+        outcome = await self._run_turn(
+            conversation, complaint, customer, payload.body, inbound_msg.id
+        )
+        reply_body, ticket, ticket_is_new = await self._finalize(
+            conversation, customer, complaint, outcome
+        )
 
+        if reply_body:
+            reply_subject = (
+                f"Re: {conversation.subject}" if conversation.subject else "Re: Your complaint"
+            )
+            await self._send_and_record_reply(
+                conversation, customer.email, reply_subject, reply_body
+            )
+        if ticket is not None and ticket_is_new:
+            await self._send_ticket_notification(conversation, customer, complaint, ticket)
+
+        self.db.commit()
+        return self._result(conversation.id, outcome, reply_body, ticket)
+
+    async def handle_inbound_email(self, inbound: InboundEmail) -> IntakeResult | None:
+        """Real inbound email path.
+
+        Returns ``None`` when the email was already processed (idempotency) -
+        the caller should still acknowledge it with the provider.
+
+        Everything below runs in a single transaction that is committed only
+        once the reply has actually been handed to the email provider. A
+        provider failure therefore rolls the whole turn back and the message
+        is never acknowledged, so the next poll retries it cleanly rather than
+        leaving a conversation advanced but the customer never asked.
+        """
+        if self.conversations.find_by_external_message_id(inbound.message_id) is not None:
+            logger.info("Inbound email already processed, skipping: %s", inbound.message_id)
+            return None
+
+        customer = self.customers.get_or_create(inbound.from_addr)
+        conversation = self._resolve_conversation(customer, inbound)
+
+        inbound_msg = self.conversations.add_message(
+            conversation,
+            direction=MessageDirection.INBOUND,
+            sender=inbound.from_addr,
+            recipient=inbound.to_addr,
+            subject=inbound.subject,
+            body=inbound.body,
+            external_message_id=inbound.message_id,
+            raw_meta={
+                "in_reply_to": inbound.in_reply_to,
+                "references": inbound.references,
+                "received_at": inbound.received_at.isoformat(),
+            },
+        )
+        self._log_email(
+            conversation,
+            "inbound",
+            inbound.from_addr,
+            inbound.to_addr,
+            inbound.subject,
+            inbound.body,
+        )
+
+        complaint = self.conversations.get_or_create_complaint(conversation)
+        outcome = await self._run_turn(
+            conversation, complaint, customer, inbound.body, inbound_msg.id
+        )
+        reply_body, ticket, ticket_is_new = await self._finalize(
+            conversation, customer, complaint, outcome
+        )
+
+        if reply_body:
+            await self._send_and_record_reply(
+                conversation,
+                customer.email,
+                self._thread_subject(conversation),
+                reply_body,
+                in_reply_to=inbound.message_id,
+                references=_reply_references(inbound),
+            )
+        if ticket is not None and ticket_is_new:
+            await self._send_ticket_notification(conversation, customer, complaint, ticket)
+
+        self.db.commit()
+        logger.info(
+            "Processed inbound email for conversation %s (complete=%s)",
+            conversation.id,
+            outcome.is_complete,
+        )
+        return self._result(conversation.id, outcome, reply_body, ticket)
+
+    # ------------------------------------------------------------------ shared core
+
+    async def _run_turn(
+        self,
+        conversation: Conversation,
+        complaint: Complaint,
+        customer: Customer,
+        body: str,
+        source_message_id: int,
+    ):
+        """Run the engine for one message and persist everything it decided."""
         state = ConversationState(
-            latest_message=payload.body,
+            latest_message=body,
             complaint_type=complaint.type,
             collected=[
                 CollectedField(key=f.key, value=f.value, status=_status(f.status))
@@ -93,58 +218,207 @@ class IntakeService:
         conversation.language_code = outcome.language_code
         conversation.pending_field = outcome.pending_field
 
-        # ---- persist engine outcome ----
         if outcome.complaint_type and not complaint.type:
             complaint.type = outcome.complaint_type
         complaint.method_key = (outcome.method_key or None) and outcome.method_key[:50]
         if outcome.concise_description:
             complaint.concise_description = outcome.concise_description
 
-        self._persist_fields(complaint, outcome, inbound_msg.id)
+        self._persist_fields(complaint, outcome, source_message_id)
 
         if outcome.is_complete:
             complaint.status = ComplaintStatus.READY
         elif complaint.type:
             complaint.status = ComplaintStatus.COLLECTING
         conversation.status = outcome.next_status
+        return outcome
 
-        ticket_reference: str | None = None
-        if outcome.is_complete:
-            ticket_service = TicketService(self.db)
-            if complaint.ticket is None:
-                ticket = ticket_service.create_for_complaint(conversation, complaint)
-            else:
-                ticket = ticket_service.refresh_snapshot(complaint.ticket, complaint)
-            ticket_reference = ticket.reference
-            conversation.status = ConversationStatus.COMPLETED
-            # Only now does the real reference exist, so the confirmation is
-            # composed here rather than inside ConversationEngine.advance.
-            reply = await self.engine.compose_ticket_confirmation(
-                outcome, customer.name, ticket_reference
-            )
-            reply_body = reply.body
+    async def _finalize(
+        self,
+        conversation: Conversation,
+        customer: Customer,
+        complaint: Complaint,
+        outcome,
+    ) -> tuple[str | None, Ticket | None, bool]:
+        """Create/refresh the ticket when complete and produce the reply body."""
+        if not outcome.is_complete:
+            return (outcome.reply.body if outcome.reply else None), None, False
+
+        ticket_service = TicketService(self.db)
+        is_new = complaint.ticket is None
+        if is_new:
+            ticket = ticket_service.create_for_complaint(conversation, complaint)
         else:
-            reply_body = outcome.reply.body if outcome.reply else None
+            ticket = ticket_service.refresh_snapshot(complaint.ticket, complaint)
+        conversation.status = ConversationStatus.COMPLETED
 
-        if reply_body:
-            await self._send_reply(conversation, customer.email, conversation.subject, reply_body)
+        # Only now does the real reference exist, so the confirmation is
+        # composed here rather than inside ConversationEngine.advance.
+        reply = await self.engine.compose_ticket_confirmation(
+            outcome, customer.name, ticket.reference
+        )
+        return reply.body, ticket, is_new
 
-        self.db.commit()
+    # ------------------------------------------------------------------ threading
 
-        fresh = self.conversations.get(conversation.id)
-        return IntakeResult(
-            conversation=fresh,  # type: ignore[arg-type]
-            reply_body=reply_body,
-            complaint_type=outcome.complaint_type,
-            method_key=outcome.method_key,
-            missing_fields=[f.key for f in outcome.missing_fields],
-            invalid_fields=[f.key for f in outcome.invalid_fields],
-            awaiting_clarification=outcome.awaiting_clarification,
-            is_complete=outcome.is_complete,
-            ticket_reference=ticket_reference,
+    def _resolve_conversation(self, customer: Customer, inbound: InboundEmail) -> Conversation:
+        """Find the conversation this email belongs to, or start a new one.
+
+        Order of preference:
+        1. RFC 5322 threading headers (``In-Reply-To``, then ``References``
+           newest-first) matched against the Message-ID of an email we sent.
+        2. The opaque ``[Ref:...]`` token in the subject - the fallback for
+           providers that rewrite Message-IDs in transit.
+
+        The sender's address is deliberately never used on its own to pick a
+        conversation: one customer may have several complaints open at once.
+        """
+        candidates = [inbound.in_reply_to, *reversed(inbound.references)]
+        for external_id in candidates:
+            if not external_id:
+                continue
+            message = self.conversations.find_by_external_message_id(external_id)
+            if message is None:
+                continue
+            conversation = self.conversations.get(message.conversation_id)
+            if conversation is not None and conversation.customer_id == customer.id:
+                return conversation
+
+        token_match = _SUBJECT_REF_RE.search(inbound.subject or "")
+        if token_match:
+            conversation = self.conversations.get_by_thread_token(token_match.group(1).lower())
+            if conversation is not None and conversation.customer_id == customer.id:
+                return conversation
+
+        return self.conversations.create(
+            customer_id=customer.id,
+            subject=inbound.subject or "Customer complaint",
         )
 
-    # ---- helpers ----
+    @staticmethod
+    def _thread_subject(conversation: Conversation) -> str:
+        base = conversation.subject or "Your complaint"
+        if not base.lower().startswith("re:"):
+            base = f"Re: {base}"
+        if conversation.thread_token and not _SUBJECT_REF_RE.search(base):
+            base = f"{base} [Ref:{conversation.thread_token}]"
+        return base
+
+    # ------------------------------------------------------------------ sending
+
+    async def _send_and_record_reply(
+        self,
+        conversation: Conversation,
+        to_addr: str,
+        subject: str,
+        body: str,
+        *,
+        in_reply_to: str | None = None,
+        references: list[str] | None = None,
+    ) -> None:
+        sent = await self.email.send(
+            OutboundEmail(
+                to_addr=to_addr,
+                from_addr=settings.smtp_sender,
+                subject=subject,
+                body=body,
+                in_reply_to=in_reply_to,
+                references=references or [],
+                thread_id=str(conversation.id),
+            )
+        )
+        # Persisting the Message-ID we sent is what lets the customer's reply
+        # be threaded back to this conversation.
+        self.conversations.add_message(
+            conversation,
+            direction=MessageDirection.OUTBOUND,
+            sender=settings.smtp_sender,
+            recipient=to_addr,
+            subject=subject,
+            body=body,
+            external_message_id=sent.message_id,
+        )
+        self._log_email(conversation, "outbound", settings.smtp_sender, to_addr, subject, body)
+
+    async def _send_ticket_notification(
+        self,
+        conversation: Conversation,
+        customer: Customer,
+        complaint: Complaint,
+        ticket: Ticket,
+    ) -> None:
+        """Send the completed, structured ticket to the support/admin inbox.
+
+        Internal-facing and deterministic: the only AI-derived content is the
+        stored concise description. Not added to the customer conversation
+        thread - it is a separate internal notification.
+        """
+        subject = f"[Ticket {ticket.reference}] {ticket.title}"
+        body = self._ticket_notification_body(conversation, customer, complaint, ticket)
+        await self.email.send(
+            OutboundEmail(
+                to_addr=settings.support_inbox_address,
+                from_addr=settings.smtp_sender,
+                subject=subject,
+                body=body,
+            )
+        )
+        self._log_email(
+            conversation,
+            "outbound",
+            settings.smtp_sender,
+            settings.support_inbox_address,
+            subject,
+            body,
+        )
+
+    def _ticket_notification_body(
+        self,
+        conversation: Conversation,
+        customer: Customer,
+        complaint: Complaint,
+        ticket: Ticket,
+    ) -> str:
+        schema = self.registry.try_get(complaint.type)
+        type_label = schema.label if schema else (complaint.type or "Complaint")
+        labels = {spec.key: spec.label for spec in (schema.fields_for() if schema else [])}
+        values = {f.key: f.value for f in complaint.fields if f.value}
+
+        lines = [
+            f"Ticket reference: {ticket.reference}",
+            f"Complaint type:   {type_label}",
+            f"Customer:         {customer.name or '(name not provided)'} <{customer.email}>",
+            f"Language:         {conversation.language_code or 'unknown'}",
+            f"Messages:         {len(conversation.messages)}",
+            f"Opened:           {conversation.created_at:%Y-%m-%d %H:%M} UTC",
+            "",
+            "Collected information",
+            "---------------------",
+        ]
+        collected_any = False
+        for key, value in values.items():
+            if key == "problem_description":
+                continue
+            lines.append(f"  {labels.get(key, key)}: {value}")
+            collected_any = True
+        if not collected_any:
+            lines.append("  (none)")
+
+        description = values.get("problem_description")
+        if description:
+            lines += ["", "Problem description (customer's own words)", "-" * 42, description]
+
+        if complaint.concise_description and complaint.concise_description != description:
+            lines += ["", "Summary", "-------", complaint.concise_description]
+
+        lines += [
+            "",
+            "Reply to the customer directly at their address above; this "
+            "mailbox is monitored automatically.",
+        ]
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------ helpers
 
     def _persist_fields(self, complaint: Complaint, outcome, source_message_id: int) -> None:
         existing = {f.key: f for f in complaint.fields}
@@ -166,29 +440,24 @@ class IntakeService:
             if fo.changed:
                 row.source_message_id = source_message_id
 
-    async def _send_reply(
-        self, conversation: Conversation, to_addr: str, subject: str | None, body: str
-    ) -> None:
-        reply_subject = f"Re: {subject}" if subject else "Re: Your complaint"
-        await self.email.send(
-            OutboundEmail(
-                to_addr=to_addr,
-                from_addr=settings.support_inbox_address,
-                subject=reply_subject,
-                body=body,
-                thread_id=str(conversation.id),
-            )
-        )
-        self.conversations.add_message(
-            conversation,
-            direction=MessageDirection.OUTBOUND,
-            sender=settings.support_inbox_address,
-            recipient=to_addr,
-            subject=reply_subject,
-            body=body,
-        )
-        self._log_email(
-            conversation, "outbound", settings.support_inbox_address, to_addr, reply_subject, body
+    def _result(
+        self,
+        conversation_id: int,
+        outcome,
+        reply_body: str | None,
+        ticket: Ticket | None,
+    ) -> IntakeResult:
+        fresh = self.conversations.get(conversation_id)
+        return IntakeResult(
+            conversation=fresh,  # type: ignore[arg-type]
+            reply_body=reply_body,
+            complaint_type=outcome.complaint_type,
+            method_key=outcome.method_key,
+            missing_fields=[f.key for f in outcome.missing_fields],
+            invalid_fields=[f.key for f in outcome.invalid_fields],
+            awaiting_clarification=outcome.awaiting_clarification,
+            is_complete=outcome.is_complete,
+            ticket_reference=ticket.reference if ticket else None,
         )
 
     def _log_email(self, conversation, direction, from_addr, to_addr, subject, body) -> None:
@@ -203,6 +472,14 @@ class IntakeService:
                 body=body,
             )
         )
+
+
+def _reply_references(inbound: InboundEmail) -> list[str]:
+    """Build the References chain for a reply to ``inbound`` (RFC 5322)."""
+    references = list(inbound.references)
+    if inbound.message_id not in references:
+        references.append(inbound.message_id)
+    return references
 
 
 def _status(value: str | FieldStatus) -> FieldStatus:

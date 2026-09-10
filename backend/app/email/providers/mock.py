@@ -1,15 +1,17 @@
-"""In-memory email provider for the prototype.
+"""In-memory email provider for local development and tests.
 
-Simulates incoming and outgoing mail without touching Gmail, Outlook, or any
-company system. Inbound mail is injected by the API (``POST /inbox``); outbound
-mail is captured in ``sent_box`` and mirrored to the ``email_logs`` table by the
-service layer.
+Simulates a real polling mailbox: ``deliver()`` injects a customer email,
+``fetch_new()`` returns everything not yet acknowledged (without removing it -
+mirroring a real IMAP UNSEEN search), and ``mark_processed()`` is what
+actually removes an item, matching the real provider's contract (never
+acknowledge before the caller has persisted the result). Outbound mail is
+captured in ``sent_box``/``sent_bodies`` for assertions.
 """
 
 from __future__ import annotations
 
 import uuid
-from collections import deque
+from collections import OrderedDict
 
 from app.email.base import EmailProvider, InboundEmail, OutboundEmail, SentEmail
 
@@ -19,15 +21,15 @@ class MockEmailProvider(EmailProvider):
 
     def __init__(self, support_address: str) -> None:
         self.support_address = support_address
-        self._inbox: deque[InboundEmail] = deque()
+        self._inbox: OrderedDict[str, InboundEmail] = OrderedDict()
         self.sent_box: list[SentEmail] = []
         self.sent_bodies: list[OutboundEmail] = []
 
     # ---- simulation hooks ----
 
     def deliver(self, email: InboundEmail) -> None:
-        """Push a customer email into the mock inbox."""
-        self._inbox.append(email)
+        """Push a customer email into the mock inbox, keyed by message_id."""
+        self._inbox[email.message_id] = email
 
     def make_inbound(
         self,
@@ -36,26 +38,32 @@ class MockEmailProvider(EmailProvider):
         body: str,
         subject: str | None = None,
         thread_id: str | None = None,
+        in_reply_to: str | None = None,
+        references: list[str] | None = None,
+        message_id: str | None = None,
     ) -> InboundEmail:
         return InboundEmail(
-            message_id=f"in-{uuid.uuid4().hex[:12]}",
+            message_id=message_id or f"<in-{uuid.uuid4().hex[:12]}@mock.local>",
             from_addr=from_addr,
             to_addr=self.support_address,
             subject=subject,
             body=body,
             thread_id=thread_id,
+            in_reply_to=in_reply_to,
+            references=references or [],
         )
 
     # ---- EmailProvider ----
 
     async def fetch_new(self) -> list[InboundEmail]:
-        drained = list(self._inbox)
-        self._inbox.clear()
-        return drained
+        return list(self._inbox.values())
+
+    async def mark_processed(self, message_id: str) -> None:
+        self._inbox.pop(message_id, None)
 
     async def send(self, email: OutboundEmail) -> SentEmail:
         sent = SentEmail(
-            message_id=f"out-{uuid.uuid4().hex[:12]}",
+            message_id=f"<out-{uuid.uuid4().hex[:12]}@mock.local>",
             to_addr=email.to_addr,
             subject=email.subject,
             thread_id=email.thread_id,

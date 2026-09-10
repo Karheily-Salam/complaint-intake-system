@@ -17,6 +17,9 @@ The stack is two containers, orchestrated by `compose.yml`:
 - SQLite lives at `/app/data/complaint_intake.db` inside the backend container,
   persisted in the named volume `backend_data`.
 - `AI_PROVIDER=rule_based`, `EMAIL_PROVIDER=mock`, `DEBUG=false` in production.
+  `EMAIL_PROVIDER=mock` means no real mailbox is attached yet - see "Going live
+  with real email" below; everything for `imap_smtp` is implemented and tested,
+  it only needs mailbox credentials.
 - Migrations run automatically on backend startup
   (`RUN_MIGRATIONS_ON_STARTUP=true`).
 
@@ -57,6 +60,56 @@ curl -fsS -X POST http://localhost/api/v1/inbox \
 
 curl -fsS http://localhost/api/v1/tickets
 ```
+
+## Going live with real email
+
+Production currently runs `EMAIL_PROVIDER=mock`: the application is complete,
+but it is not attached to a mailbox, so no customer mail is received or sent.
+Switching it on is configuration only - no code change, no redeploy of a
+different image.
+
+**What you need first (the one manual step):** a dedicated mailbox for
+complaints (e.g. `complaints@yourdomain.com`, or a free mailbox to start with)
+and an **app password** for it - not the account's own password, and not an
+OAuth client secret. For Gmail this means enabling 2FA and creating an app
+password; most other providers have the same feature under "app passwords" or
+"mail client access".
+
+Then, **on the server only** (`backend/.env` is git-ignored and never
+committed):
+
+```bash
+cd /opt/projects/complaint-intake-system
+nano backend/.env          # see the IMAP_*/SMTP_* block in backend/.env.example
+docker compose up -d       # picks up the new env, no rebuild needed
+docker compose logs -f backend | head -30
+```
+
+Set at minimum:
+
+```
+EMAIL_PROVIDER=imap_smtp
+SUPPORT_INBOX_ADDRESS=support@yourdomain.com   # where finished tickets land
+MAIL_DOMAIN=yourdomain.com
+IMAP_HOST=… IMAP_USERNAME=… IMAP_PASSWORD=…
+SMTP_HOST=… SMTP_USERNAME=… SMTP_PASSWORD=…
+```
+
+The backend validates this at startup and refuses to start if anything is
+missing, naming the missing variables (never their values). On success the log
+shows `Email poller started (every 60s, provider=imap_smtp)`.
+
+Notes:
+
+- Outbound only - IMAP/SMTP are connections *from* the VPS, so no firewall
+  change and no inbound port are needed.
+- Use a mailbox dedicated to this system: the poller marks messages `\Seen`
+  as it processes them.
+- To verify safely, email the complaints mailbox from your own address; the
+  ticket notification goes to `SUPPORT_INBOX_ADDRESS`, so point that at
+  yourself for the first run.
+- To go back to a dry system at any time, set `EMAIL_PROVIDER=mock` and
+  `docker compose up -d`.
 
 ## Updating
 

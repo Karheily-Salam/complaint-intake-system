@@ -63,8 +63,58 @@ class Settings(BaseSettings):
     min_language_confidence: float = 0.5
 
     # ---- Email provider ----
-    email_provider: str = "mock"  # mock (only mock implemented in the prototype)
+    email_provider: str = "mock"  # mock | imap_smtp
+    # Where completed tickets are sent (the support/admin team's own inbox).
     support_inbox_address: str = "complaints@example.com"
+    # Domain used when generating our outbound Message-IDs. Only an identifier
+    # (it never has to resolve), but using the real sending domain is correct
+    # and helps some providers preserve the header rather than rewrite it.
+    mail_domain: str = "example.com"
+
+    # ---- Inbound email (IMAP polling, EMAIL_PROVIDER=imap_smtp) ----
+    imap_host: str | None = None
+    imap_port: int = 993
+    imap_username: str | None = None
+    imap_password: str | None = None
+    imap_use_ssl: bool = True
+    imap_mailbox: str = "INBOX"
+    # How often the background poller checks the mailbox.
+    email_poll_interval_seconds: int = 60
+
+    # ---- Outbound email (SMTP, EMAIL_PROVIDER=imap_smtp) ----
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    # smtp_use_ssl=true  -> implicit TLS on connect (typically port 465)
+    # smtp_use_tls=true  -> STARTTLS after connecting (typically port 587)
+    smtp_use_ssl: bool = False
+    smtp_use_tls: bool = True
+    # Defaults to support_inbox_address when unset (see smtp_sender).
+    smtp_from_addr: str | None = None
+
+    @property
+    def smtp_sender(self) -> str:
+        return self.smtp_from_addr or self.support_inbox_address
+
+    def missing_email_settings(self) -> list[str]:
+        """Env var names required by the configured email provider but unset.
+
+        Returns names only - never values - so this is safe to log and safe to
+        surface in an error message. An empty list means the provider is
+        fully configured.
+        """
+        if self.email_provider.lower() != "imap_smtp":
+            return []
+        required = {
+            "IMAP_HOST": self.imap_host,
+            "IMAP_USERNAME": self.imap_username,
+            "IMAP_PASSWORD": self.imap_password,
+            "SMTP_HOST": self.smtp_host,
+            "SMTP_USERNAME": self.smtp_username,
+            "SMTP_PASSWORD": self.smtp_password,
+        }
+        return [name for name, value in required.items() if not value]
 
     @property
     def complaint_schema_dir(self) -> Path:

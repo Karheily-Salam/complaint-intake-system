@@ -48,3 +48,31 @@ def test_run_migrations_does_not_disable_other_loggers(tmp_path, monkeypatch):
             "this is exactly what silences uvicorn's startup/request logs and "
             "makes a successful startup look hung"
         )
+
+
+def test_app_loggers_keep_their_level_after_migrations(tmp_path, monkeypatch):
+    """The same root cause, one level subtler.
+
+    fileConfig() also *reconfigures* the root logger from alembic.ini, which
+    sets it to WARN. Any app logger without an explicit level of its own then
+    inherits WARN for the rest of the process, so everything the email poller
+    and the rest of the app report at INFO silently disappears in production
+    while errors still show - the worst kind of half-working logging.
+    """
+    from app.core.logging import configure_logging, get_logger
+
+    db_path = tmp_path / "logging_level_check.db"
+    monkeypatch.setattr(
+        migrations_module.settings, "database_url", f"sqlite:///{db_path.as_posix()}"
+    )
+
+    configure_logging()
+    poller_logger = get_logger("app.services.email_poller")
+    assert poller_logger.isEnabledFor(logging.INFO)
+
+    migrations_module.run_migrations()
+
+    assert poller_logger.isEnabledFor(logging.INFO), (
+        "application INFO logging was silenced by Alembic reconfiguring the "
+        "root logger - the poller's operational output would vanish"
+    )
