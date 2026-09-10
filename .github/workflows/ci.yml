@@ -1,0 +1,88 @@
+name: CI
+
+# Portfolio repository: the point of this workflow is that a visitor (or a
+# future me) can see at a glance that the suite genuinely passes from a clean
+# checkout - not just on the machine it was written on.
+#
+# It needs no secrets and no external services. The tests run against the mock
+# email provider and the deterministic rule-based AI provider, each creating
+# its own throwaway SQLite file, so nothing here touches the real mailbox,
+# Timeweb, DNS, or the production database.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push to the same branch cancels the previous run rather than
+# queueing behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Matches requires-python and the runtime image (python:3.12-slim).
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        # Editable install, as in the Docker image: `import app` must resolve
+        # to backend/app so the YAML schema directory, alembic.ini and the
+        # SQLite path anchor correctly.
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Pytest
+        # No backend/.env exists on a clean checkout, which is deliberate:
+        # tests/conftest.py sets the mock providers and a throwaway database,
+        # so a missing env file is the expected state rather than a failure.
+        run: pytest -q
+
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        # `npm ci` (not `npm install`) so the lockfile is authoritative and a
+        # drifting transitive dependency fails the build instead of silently
+        # changing it.
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        # `npm run build` typechecks again before bundling; running typecheck
+        # as its own step above just makes a type error obvious in the job
+        # summary rather than buried in build output.
+        run: npm run build

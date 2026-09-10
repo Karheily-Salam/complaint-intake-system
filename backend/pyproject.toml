@@ -32,6 +32,11 @@ include = ["app*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# Put backend/ on sys.path explicitly. A few tests share helpers via
+# `from tests.x import ...`, which otherwise only resolves under
+# `python -m pytest` (that form puts the working directory on sys.path) and
+# fails under a plain `pytest` - as CI runs it.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
