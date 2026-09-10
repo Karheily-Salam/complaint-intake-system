@@ -102,12 +102,12 @@ class ConversationEngine:
 
         # ---- 6. deterministic missing / invalid computation ----
         outcome.fields = list(current.values())
-        missing, invalid = self._classify_fields(specs, current)
+        missing, invalid, next_unresolved = self._classify_fields(specs, current)
         outcome.missing_fields = missing
         outcome.invalid_fields = invalid
 
         # ---- 7. transition ----
-        if not missing and not invalid:
+        if next_unresolved is None:
             outcome.is_complete = True
             outcome.next_status = ConversationStatus.VALIDATING
             # No reply is composed here: the ticket (and its reference) does
@@ -119,9 +119,15 @@ class ConversationEngine:
             return outcome
 
         # The single field the *next* inbound message should be interpreted
-        # as primarily answering - the exact same selection already made for
-        # `missing_fields` below, not a separate decision.
-        outcome.pending_field = missing[0].key if missing else None
+        # as primarily answering: the first field in schema order that is
+        # not yet resolved - invalid or missing, whichever comes first (see
+        # _classify_fields). An invalid answer to the field the customer was
+        # just asked about must keep the conversation on that same field
+        # rather than jumping ahead to the next merely-missing one, so this
+        # is deliberately NOT just `missing[0]`.
+        outcome.pending_field = next_unresolved.key
+        next_fo = current[next_unresolved.key] if next_unresolved.key in current else None
+        is_invalid = next_fo is not None and next_fo.status == FieldStatus.INVALID
 
         outcome.next_status = ConversationStatus.COLLECTING_INFO
         outcome.reply = await self._ai.compose_reply(
@@ -130,20 +136,23 @@ class ConversationEngine:
                 complaint_label=schema.label,
                 customer_name=state.customer_name,
                 language_code=outcome.language_code,
-                # Ask about exactly one missing field per message, in schema
-                # order (`missing` is already ordered that way - see
-                # _classify_fields). `outcome.missing_fields` above still
-                # reports the *full* remaining set for the API/UI; this is
-                # only what the customer-facing reply may mention.
-                missing_fields=missing[:1],
-                invalid_fields=[
-                    InvalidField(
-                        key=s.key,
-                        label=s.label,
-                        error=(current[s.key].validation_error or "Please check this value."),
-                    )
-                    for s in invalid
-                ],
+                # Ask about exactly this one field per message - a
+                # correction if it's invalid, otherwise a plain request.
+                # `outcome.missing_fields` / `outcome.invalid_fields` above
+                # still report the *full* remaining sets for the API/UI;
+                # this is only what the customer-facing reply may mention.
+                missing_fields=[] if is_invalid else [next_unresolved],
+                invalid_fields=(
+                    [
+                        InvalidField(
+                            key=next_unresolved.key,
+                            label=next_unresolved.label,
+                            error=next_fo.validation_error or "Please check this value.",
+                        )
+                    ]
+                    if is_invalid
+                    else []
+                ),
             )
         )
         return outcome
@@ -239,16 +248,30 @@ class ConversationEngine:
     @staticmethod
     def _classify_fields(
         specs: list[FieldSpec], current: dict[str, FieldOutcome]
-    ) -> tuple[list[FieldSpec], list[FieldSpec]]:
+    ) -> tuple[list[FieldSpec], list[FieldSpec], FieldSpec | None]:
+        """Deterministic per-turn field state.
+
+        Returns the full ``missing`` and ``invalid`` lists (unchanged - the
+        API/UI still reports every remaining field), plus ``next_unresolved``:
+        the single field, in schema order, that is either invalid or missing
+        - whichever comes first. A field the customer just answered invalidly
+        therefore always takes priority over a later merely-missing one, so
+        the conversation never advances past a value it has already rejected.
+        """
         missing: list[FieldSpec] = []
         invalid: list[FieldSpec] = []
+        next_unresolved: FieldSpec | None = None
         for spec in specs:
             fo = current.get(spec.key)
             if fo is not None and fo.status == FieldStatus.INVALID:
                 invalid.append(spec)
+                if next_unresolved is None:
+                    next_unresolved = spec
             elif spec.required and (fo is None or not fo.is_present):
                 missing.append(spec)
-        return missing, invalid
+                if next_unresolved is None:
+                    next_unresolved = spec
+        return missing, invalid, next_unresolved
 
     async def _clarify_type(
         self, state: ConversationState, outcome: EngineOutcome

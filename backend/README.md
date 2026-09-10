@@ -139,12 +139,18 @@ interpreted as that user ID, not require the customer to repeat the field's
 name, and this must work for every required field and in every supported
 language.
 
-- `ConversationEngine.advance` sets `outcome.pending_field` from the exact
-  same `missing[0]` already used for the ASK reply (no duplicate
-  field-selection logic), and `IntakeService` persists it onto
+- `ConversationEngine.advance` sets `outcome.pending_field` from
+  `_classify_fields`'s `next_unresolved`: the first field in schema order
+  that is not yet resolved - invalid **or** missing, whichever comes first -
+  and reuses that exact same value for the ASK reply (no duplicate
+  field-selection logic). `IntakeService` persists it onto
   `Conversation.pending_field` (see the `add conversation pending_field`
   migration) so the *next* inbound message's `ConversationState.pending_field`
-  carries it forward.
+  carries it forward. Treating invalid and missing uniformly this way is
+  what makes an invalid answer to the field just asked keep the conversation
+  on that same field, instead of jumping ahead to a later field that merely
+  happens to be missing (`missing[0]` alone ignored the `invalid` list
+  entirely - see `tests/test_pending_field_invalid_priority.py`).
 - `AIProvider.extract(..., pending_field=...)` receives it. In
   `RuleBasedAIProvider`, the existing per-field extractors (labels, email,
   numeric dates, ...) always run first and are never overridden; the pending

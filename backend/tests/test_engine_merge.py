@@ -116,6 +116,95 @@ async def test_invalid_value_is_corrected_by_later_message():
     assert email.status == FieldStatus.VALIDATED
 
 
+async def test_invalid_pending_field_is_not_overridden_by_a_later_missing_field():
+    """Regression: an invalid answer to the field the customer was just
+    asked about must keep the conversation pending on that field, never
+    jump ahead to a different, merely-missing field later in schema order
+    (previously `pending_field` was computed from `missing[0]` alone, which
+    ignored invalid fields entirely)."""
+    eng = engine()
+    eng._ai.extractions = [
+        ExtractionResult(fields=[ExtractedField(key="account_email", value="not-an-email")])
+    ]
+    state = ConversationState(
+        latest_message="not-an-email",
+        complaint_type="withdrawal",
+        collected=[
+            CollectedField("user_id", "U-1", FieldStatus.VALIDATED),
+            CollectedField("problem_description", "stuck", FieldStatus.VALIDATED),
+        ],
+        pending_field="account_email",
+    )
+    outcome = await eng.advance(state)
+    assert outcome.is_complete is False
+    assert outcome.pending_field == "account_email"
+    assert [s.key for s in outcome.invalid_fields] == ["account_email"]
+    # withdrawal_transaction_id is genuinely still missing too, and the API
+    # still reports it - it just must not become the pending field.
+    assert [s.key for s in outcome.missing_fields] == ["withdrawal_transaction_id"]
+
+
+async def test_earlier_missing_field_still_takes_priority_over_a_later_invalid_one():
+    """Not "invalid always wins" - schema order decides. A field earlier in
+    declaration order that is merely missing must still be asked about
+    before a later field that happens to be invalid."""
+    eng = engine()
+    eng._ai.extractions = [ExtractionResult(fields=[])]
+    state = ConversationState(
+        latest_message="anything",
+        complaint_type="withdrawal",
+        collected=[
+            CollectedField("account_email", "not-an-email", FieldStatus.INVALID),
+            CollectedField("problem_description", "stuck", FieldStatus.VALIDATED),
+        ],
+        pending_field="account_email",
+    )
+    outcome = await eng.advance(state)
+    assert outcome.is_complete is False
+    # user_id comes before account_email in the withdrawal schema.
+    assert outcome.pending_field == "user_id"
+
+
+async def test_invalid_user_id_does_not_advance_to_account_email():
+    """Letter B: the same priority rule for user_id specifically - not an
+    account_email-only special case."""
+    eng = engine()
+    eng._ai.extractions = [ExtractionResult(fields=[ExtractedField(key="user_id", value="x")])]
+    state = ConversationState(
+        latest_message="x",
+        complaint_type="withdrawal",
+        collected=[CollectedField("problem_description", "stuck", FieldStatus.VALIDATED)],
+        pending_field="user_id",
+    )
+    outcome = await eng.advance(state)
+    assert outcome.is_complete is False
+    assert outcome.pending_field == "user_id"
+    assert [s.key for s in outcome.invalid_fields] == ["user_id"]
+    assert "account_email" not in [f.key for f in outcome.fields if f.is_present]
+
+
+async def test_invalid_withdrawal_transaction_id_does_not_create_a_ticket():
+    """Letter C: same priority rule for withdrawal_transaction_id."""
+    eng = engine()
+    eng._ai.extractions = [
+        ExtractionResult(fields=[ExtractedField(key="withdrawal_transaction_id", value="ab")])
+    ]
+    state = ConversationState(
+        latest_message="ab",
+        complaint_type="withdrawal",
+        collected=[
+            CollectedField("user_id", "U-1", FieldStatus.VALIDATED),
+            CollectedField("account_email", "a@example.com", FieldStatus.VALIDATED),
+            CollectedField("problem_description", "stuck", FieldStatus.VALIDATED),
+        ],
+        pending_field="withdrawal_transaction_id",
+    )
+    outcome = await eng.advance(state)
+    assert outcome.is_complete is False
+    assert outcome.pending_field == "withdrawal_transaction_id"
+    assert [s.key for s in outcome.invalid_fields] == ["withdrawal_transaction_id"]
+
+
 async def test_previously_valid_value_can_be_corrected():
     eng = engine()
     eng._ai.extractions = [
