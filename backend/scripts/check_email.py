@@ -78,12 +78,15 @@ def check_settings() -> bool:
         )
 
     if (settings.imap_username or "").lower() == settings.support_inbox_address.lower():
-        _fail(
-            "SUPPORT_INBOX_ADDRESS is the same mailbox that gets polled. Completed "
-            "tickets would be delivered into the complaints inbox and skipped as "
-            "self-addressed - point it at a different mailbox."
+        # A supported single-mailbox setup, not an error: loop protection stops
+        # the system answering its own notifications. Worth stating plainly,
+        # though, because of how the tickets show up.
+        print(
+            "  note  single-mailbox setup: completed tickets are emailed to the same "
+            "mailbox that is polled. Loop protection skips them (they are never "
+            "read as complaints), but they arrive already marked read - look for "
+            "subjects starting '[Ticket '."
         )
-        return False
     return True
 
 

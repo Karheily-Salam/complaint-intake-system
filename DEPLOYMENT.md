@@ -74,10 +74,12 @@ different image.
    `complaints@yourdomain.com` or a free mailbox to start with, plus an **app
    password** for it - not the account's own password, and not an OAuth client
    secret. For Gmail: enable 2-Step Verification, then create an app password.
-2. A **different** address for finished tickets (`SUPPORT_INBOX_ADDRESS`) -
-   your own inbox is fine. It must not be mailbox 1: tickets delivered into
-   the polled mailbox are skipped as self-addressed (loop prevention), so
-   nobody would ever see them.
+2. An address for finished tickets (`SUPPORT_INBOX_ADDRESS`). A separate
+   inbox is preferable - tickets arrive unread in a staff mailbox. Pointing
+   it at mailbox 1 is also supported when only one mailbox exists: loop
+   protection means the system never reads its own notifications as
+   complaints, but they arrive in that mailbox already marked read, so look
+   for the `[Ticket NNNNNN]` subject prefix.
 
 Then, **on the server only** (`backend/.env` is git-ignored and never
 committed):

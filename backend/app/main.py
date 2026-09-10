@@ -43,14 +43,15 @@ async def lifespan(app: FastAPI):
     if settings.email_provider.lower() != "mock":
         polled = (settings.imap_username or "").strip().lower()
         if polled and polled == settings.support_inbox_address.strip().lower():
-            # Not fatal (the poller skips its own mail), but it means every
-            # completed ticket lands back in the mailbox being polled, where
-            # it is silently marked read - so nobody ever sees the tickets.
-            logger.warning(
-                "SUPPORT_INBOX_ADDRESS is the same mailbox the poller reads "
-                "(IMAP_USERNAME). Completed tickets will be delivered into the "
-                "complaints inbox and skipped as self-addressed - point "
-                "SUPPORT_INBOX_ADDRESS at a different mailbox."
+            # Supported, and the only option when a deployment has just one
+            # mailbox. Loop protection keeps the system from answering its own
+            # notifications; they simply land back in the polled mailbox and
+            # are marked read there.
+            logger.info(
+                "Single-mailbox setup: completed tickets are emailed to %s, the "
+                "same mailbox being polled. They are skipped as self-addressed "
+                "(never read as complaints) and arrive already marked read.",
+                settings.support_inbox_address,
             )
         poller_task = asyncio.create_task(EmailPoller().run_forever())
 
