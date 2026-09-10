@@ -78,6 +78,23 @@ class InvalidField(BaseModel):
     key: str
     label: str
     error: str
+    # Optional example of a valid value (from the schema), so a provider can
+    # show the customer a concrete format hint without needing the raw
+    # FieldSpec. Never customer-facing on its own - just phrasing material.
+    example: str | None = None
+
+
+class CollectedFieldView(BaseModel):
+    """One resolved field to display in the final ticket confirmation.
+
+    ``label`` is the schema's own (English) label - only a fallback for a
+    provider that doesn't have its own localized display name for ``key``;
+    it must never be replaced by the raw internal ``key`` itself.
+    """
+
+    key: str
+    label: str
+    value: str
 
 
 class ReplyRequest(BaseModel):
@@ -92,6 +109,9 @@ class ReplyRequest(BaseModel):
     customer_name: str | None = None
     missing_fields: list[FieldSpec] = Field(default_factory=list)
     invalid_fields: list[InvalidField] = Field(default_factory=list)
+    # Resolved field values to show in an ACKNOWLEDGE (ticket-created) reply -
+    # only ever populated for that kind.
+    collected_fields: list[CollectedFieldView] = Field(default_factory=list)
     guidance: str = ""                 # free-text steer for CLARIFY messages
     ticket_reference: str | None = None
     # ISO 639-1 code the engine has resolved for this turn (see

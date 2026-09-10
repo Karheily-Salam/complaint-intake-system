@@ -1,5 +1,5 @@
 """The final ticket-confirmation message must include the actual generated
-ticket reference (e.g. "CMP-000001") - not omit it, and not an invented one.
+ticket reference (e.g. "000001") - not omit it, and not an invented one.
 
 Architecture under test (see backend/README.md):
   - ConversationEngine.advance() no longer composes the ACKNOWLEDGE reply
@@ -37,8 +37,8 @@ def send(
 def _assert_reference_matches_the_real_ticket(client: TestClient, result: dict) -> None:
     reference = result["ticket_reference"]
     assert reference is not None
-    assert reference.startswith("CMP-")
-    # The reply must contain this exact reference, not just any "CMP-" string.
+    assert reference.isdigit(), f"reference must be numeric-only, got {reference!r}"
+    # The reply must contain this exact reference, not just any digit string.
     assert reference in result["reply_body"]
     # And it must be the reference of the ticket actually persisted in the DB
     # - not a value the AI made up that merely looks like one.

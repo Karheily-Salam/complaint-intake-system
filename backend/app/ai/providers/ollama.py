@@ -179,6 +179,7 @@ class OllamaAIProvider(AIProvider):
                 customer_name=request.customer_name,
                 missing_fields=[_field_view(s) for s in request.missing_fields],
                 invalid_fields=[f.model_dump() for f in request.invalid_fields],
+                collected_fields=[f.model_dump() for f in request.collected_fields],
                 guidance=request.guidance,
                 ticket_reference=request.ticket_reference,
                 language_code=request.language_code,

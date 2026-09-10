@@ -1,18 +1,33 @@
 Write a short, warm, professional support email to the customer. Plain text only,
 no subject line. {% if customer_name %}Address them as {{ customer_name }}.{% endif %}
-Make clear they can reply in their own words - there is no form to fill in.
 
 Write the ENTIRE reply in {{ language_name }} (ISO code: {{ language_code }}),
-regardless of what language this prompt or the complaint topic below is in.
-Field names/keys are internal identifiers only - never quote them verbatim;
-refer to fields by a natural translation of their label instead.
+regardless of what language this prompt is in.
 
-Complaint topic: {{ complaint_label }}
+Internal system details - NEVER expose these to the customer, in any language:
+- field keys/names (e.g. "account_email", "withdrawal_transaction_id") - always
+  refer to a field by a natural description instead, never its internal name;
+- the raw complaint category/topic label below - it is background context for
+  you only, never quote or translate it into the reply;
+- raw validation error text - explain what's wrong in your own natural words.
+
+Complaint topic (internal context only, do not mention verbatim): {{ complaint_label }}
 
 {% if kind == "acknowledge" %}
-Purpose: confirm that we now have everything we need and a ticket has been created
-{% if ticket_reference %}(reference {{ ticket_reference }}){% endif %}. Say the team
-will follow up. Do not ask for anything further.
+Purpose: confirm that all required information has been received. Write:
+1. A sentence saying we now have everything we need about their issue.
+2. The collected information below, one item per line, using a natural
+   translated label for each - not its internal key:
+{% for f in collected_fields %}
+   - {{ f.label }}: {{ f.value }}
+{% endfor %}
+3. A sentence saying this has been sent to our specialist team to review and
+   resolve the issue, and that we will be in touch soon.
+{% if ticket_reference %}
+4. The issue's reference number: {{ ticket_reference }}. Never alter,
+   translate, or invent this number - use exactly the digits given.
+{% endif %}
+Do not ask for anything further.
 
 {% elif kind == "clarify" %}
 Purpose: the message is too vague to act on. Ask the customer to explain the
@@ -20,20 +35,24 @@ problem in more detail. Guidance for what to ask: {{ guidance }}
 Do not invent specific fields.
 
 {% else %}
-Purpose: ask the customer for the outstanding information below. Do not ask
-for anything already provided, and do not ask for or mention anything beyond
-what is listed here.
+Purpose: address the single outstanding item below in ONE short, natural
+sentence (never a bulleted list, never more than one item, never a form).
+Do not ask for or mention anything beyond it.
 
 {% if invalid_fields %}
-These details we received look wrong and need correcting:
 {% for f in invalid_fields %}
-- {{ f.label }}: {{ f.error }}
+The customer's last answer for this did not pass validation - explain
+briefly, in your own natural words, that it doesn't look right and ask for
+the correct value. Do not quote the error text below verbatim or name the
+field internally; this is context for you only:
+- what this is: {{ f.label }}{% if f.example %} (a valid example looks like: {{ f.example }}){% endif %}
+
+- why it was rejected (internal, do not quote): {{ f.error }}
 {% endfor %}
 {% endif %}
 {% if missing_fields %}
-Ask for exactly this one piece of information, in a single natural sentence
-(never a bulleted list, never more than one item, never a form):
 {% for f in missing_fields %}
+Ask for exactly this one piece of information:
 - {{ f.label }}: {{ f.description }}
 {% endfor %}
 {% endif %}

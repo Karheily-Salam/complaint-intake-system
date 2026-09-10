@@ -17,8 +17,10 @@ from datetime import date
 from app.ai.base import (
     AIProvider,
     Classification,
+    CollectedFieldView,
     ExtractedField,
     ExtractionResult,
+    InvalidField,
     LanguageDetection,
     ReplyDraft,
     ReplyKind,
@@ -215,12 +217,12 @@ _PHRASES: dict[str, dict[str, str]] = {
     "en": {
         "greeting_named": "Hi {name},",
         "greeting": "Hello,",
-        "ack": (
-            "Thank you - we now have everything we need about your {label} and have "
-            "created a ticket for our team{ref}. We will be in touch shortly."
+        "ack_intro": "Thank you - we now have all the information we need about your issue:",
+        "ack_sent_to_team": (
+            "This has been sent to our specialist team to review and resolve the "
+            "issue, and we will be in touch with you shortly."
         ),
-        "ref_suffix": " (reference {ref})",
-        "invalid_intro": "Some details we received need correcting:",
+        "ack_reference_label": "Issue reference number",
         "footer": "You can reply in your own words - no need for a form.",
         "clarify_intro": (
             "Thanks for contacting us. We would like to help but need a little more "
@@ -228,17 +230,22 @@ _PHRASES: dict[str, dict[str, str]] = {
         ),
         "clarify_question": "Could you describe what happened and what went wrong?",
         "ask_field_generic": "Could you please provide the following: {item}?",
+        "invalid_field_generic": (
+            'The information you provided for "{item}" doesn\'t look right. '
+            "Could you please provide it again?"
+        ),
     },
     "ru": {
         "greeting_named": "Здравствуйте, {name},",
         "greeting": "Здравствуйте,",
-        "ack": (
-            "Спасибо - теперь у нас есть всё необходимое по вашему обращению "
-            "«{label}», и мы создали заявку для нашей команды{ref}. Мы свяжемся с "
-            "вами в ближайшее время."
+        "ack_intro": (
+            "Спасибо - теперь у нас есть вся необходимая информация по вашему обращению:"
         ),
-        "ref_suffix": " (номер {ref})",
-        "invalid_intro": "Некоторые из полученных данных нужно исправить:",
+        "ack_sent_to_team": (
+            "Эта информация передана специализированной команде для рассмотрения и "
+            "решения проблемы, и мы свяжемся с вами в ближайшее время."
+        ),
+        "ack_reference_label": "Номер обращения",
         "footer": "Вы можете ответить своими словами - заполнять форму не нужно.",
         "clarify_intro": (
             "Спасибо, что написали нам. Мы хотим помочь, но сначала нужно немного "
@@ -246,22 +253,29 @@ _PHRASES: dict[str, dict[str, str]] = {
         ),
         "clarify_question": "Не могли бы вы описать, что произошло и что пошло не так?",
         "ask_field_generic": "Пожалуйста, укажите следующее: {item}.",
+        "invalid_field_generic": (
+            'Указанные данные ("{item}") выглядят некорректно. '
+            "Пожалуйста, укажите их ещё раз."
+        ),
     },
     "ar": {
         "greeting_named": "مرحبًا {name}،",
         "greeting": "مرحبًا،",
-        "ack": (
-            "شكرًا لك - أصبح لدينا الآن كل ما نحتاجه بخصوص {label}، وقد أنشأنا "
-            "تذكرة لفريقنا{ref}. سنتواصل معك قريبًا."
+        "ack_intro": "شكرًا لك، أصبحت لدينا جميع المعلومات المطلوبة بخصوص مشكلتك:",
+        "ack_sent_to_team": (
+            "تم إرسال هذه المعلومات إلى الفريق المختص لمراجعة المشكلة وحلها، "
+            "وسيتم التواصل معك قريبًا."
         ),
-        "ref_suffix": " (المرجع {ref})",
-        "invalid_intro": "بعض التفاصيل التي استلمناها تحتاج إلى تصحيح:",
+        "ack_reference_label": "الرقم المرجعي للمشكلة",
         "footer": "يمكنك الرد بأسلوبك الخاص - لا حاجة لتعبئة نموذج.",
         "clarify_intro": (
             "شكرًا لتواصلك معنا. نود مساعدتك، لكننا بحاجة إلى مزيد من التفاصيل أولاً."
         ),
         "clarify_question": "هل يمكنك وصف ما حدث وما الذي حدث بشكل خاطئ؟",
         "ask_field_generic": "يرجى تزويدنا بما يلي: {item}.",
+        "invalid_field_generic": (
+            "المعلومات التي أدخلتها لـ«{item}» غير صحيحة. يرجى إدخالها مرة أخرى."
+        ),
     },
 }
 
@@ -324,6 +338,144 @@ def _field_question(spec: FieldSpec, language_code: str) -> str:
         return phrase
     generic = _PHRASES.get(language_code, _PHRASES[_DEFAULT_LANGUAGE])["ask_field_generic"]
     return generic.format(item=spec.description or spec.label)
+
+
+# ---- natural-language display labels (final confirmation) -----------------
+# Customer-facing NOUN labels for the ticket confirmation's collected-info
+# list - deliberately not a literal translation of the schema's English
+# `label`/internal `key` (e.g. "withdrawal_transaction_id" never appears).
+# Keyed by field key, same fallback pattern as _FIELD_QUESTION_PHRASES: a key
+# not listed here falls back to the schema's own (English) label rather than
+# the raw key, so an unknown future field still never leaks its key.
+_FIELD_DISPLAY_LABELS: dict[str, dict[str, str]] = {
+    "en": {
+        "user_id": "User ID",
+        "account_email": "Account email",
+        "withdrawal_transaction_id": "Withdrawal transaction number",
+        "source_wallet_or_account": "Source wallet or account",
+        "transaction_date": "Transaction date",
+        "deposit_method": "Deposit method",
+    },
+    "ru": {
+        "user_id": "ID пользователя",
+        "account_email": "Электронная почта",
+        "withdrawal_transaction_id": "Номер транзакции вывода",
+        "source_wallet_or_account": "Кошелёк или счёт списания",
+        "transaction_date": "Дата операции",
+        "deposit_method": "Способ внесения депозита",
+    },
+    "ar": {
+        "user_id": "رقم المستخدم",
+        "account_email": "البريد الإلكتروني",
+        "withdrawal_transaction_id": "رقم عملية السحب",
+        "source_wallet_or_account": "المحفظة أو الحساب المستخدم",
+        "transaction_date": "تاريخ العملية",
+        "deposit_method": "طريقة الإيداع",
+    },
+}
+
+
+def _field_display_label(field: CollectedFieldView, language_code: str) -> str:
+    table = _FIELD_DISPLAY_LABELS.get(language_code, _FIELD_DISPLAY_LABELS[_DEFAULT_LANGUAGE])
+    return table.get(field.key, field.label)
+
+
+# ---- invalid-answer correction phrasing ------------------------------------
+# Natural, customer-friendly explanations of what was wrong and what to send
+# instead - never the raw validation error text (e.g. "Not a valid email
+# address.") or the internal field key. Keyed by field key, same fallback
+# pattern as _FIELD_QUESTION_PHRASES.
+_FIELD_INVALID_PHRASES: dict[str, dict[str, str]] = {
+    "en": {
+        "user_id": (
+            "The user ID you provided doesn't look valid. Please provide the "
+            "correct user ID for your account."
+        ),
+        "account_email": (
+            "The email address you provided isn't in a valid format. Please provide "
+            "the email address registered on your account, for example: "
+            "example@example.com"
+        ),
+        "withdrawal_transaction_id": (
+            "The withdrawal transaction number you provided doesn't look valid. "
+            "Please provide the correct withdrawal transaction number."
+        ),
+        "source_wallet_or_account": (
+            "We couldn't quite make out the wallet or account you used. Could you "
+            "tell us again which one it was?"
+        ),
+        "transaction_date": (
+            "The date you provided doesn't look valid. Please provide the date in "
+            "the format YYYY-MM-DD, for example: 2026-09-08."
+        ),
+        "deposit_method": (
+            "We couldn't quite make out how you made the deposit. Could you tell us "
+            "again (e.g. bank transfer, card, or e-wallet)?"
+        ),
+    },
+    "ru": {
+        "user_id": (
+            "Указанный ID пользователя недействителен. Пожалуйста, укажите "
+            "правильный ID пользователя для вашего аккаунта."
+        ),
+        "account_email": (
+            "Указанный адрес электронной почты имеет неверный формат. Пожалуйста, "
+            "укажите email, привязанный к вашему аккаунту, например: "
+            "example@example.com"
+        ),
+        "withdrawal_transaction_id": (
+            "Указанный номер транзакции вывода недействителен. Пожалуйста, укажите "
+            "правильный номер транзакции вывода средств."
+        ),
+        "source_wallet_or_account": (
+            "Не удалось разобрать, с какого кошелька или счёта была проведена "
+            "операция. Пожалуйста, укажите ещё раз."
+        ),
+        "transaction_date": (
+            "Указанная дата недействительна. Пожалуйста, укажите дату в формате "
+            "ГГГГ-ММ-ДД, например: 2026-09-08."
+        ),
+        "deposit_method": (
+            "Не удалось разобрать способ внесения депозита. Пожалуйста, укажите "
+            "ещё раз (например, банковский перевод, карта или электронный кошелёк)."
+        ),
+    },
+    "ar": {
+        "user_id": (
+            "عزيزي المستخدم، رقم المستخدم الذي أدخلته غير صحيح. يرجى إدخال رقم "
+            "المستخدم الصحيح الخاص بحسابك."
+        ),
+        "account_email": (
+            "عزيزي المستخدم، صيغة البريد الإلكتروني التي أدخلتها غير صحيحة.\n"
+            "يرجى إدخال البريد الإلكتروني المرتبط بحسابك بالشكل التالي:\n"
+            "example@example.com"
+        ),
+        "withdrawal_transaction_id": (
+            "رقم عملية السحب الذي أدخلته غير صحيح. يرجى إدخال رقم عملية السحب الصحيح."
+        ),
+        "source_wallet_or_account": (
+            "لم نتمكن من التعرف على المحفظة أو الحساب الذي استخدمته. يرجى إخبارنا "
+            "مرة أخرى."
+        ),
+        "transaction_date": (
+            "التاريخ الذي أدخلته غير صحيح. يرجى إدخال التاريخ بالصيغة التالية: "
+            "2026-09-08."
+        ),
+        "deposit_method": (
+            "لم نتمكن من التعرف على طريقة الإيداع التي استخدمتها. يرجى إخبارنا مرة "
+            "أخرى (مثل التحويل البنكي أو البطاقة أو المحفظة الإلكترونية)."
+        ),
+    },
+}
+
+
+def _field_invalid_message(invalid: InvalidField, language_code: str) -> str:
+    table = _FIELD_INVALID_PHRASES.get(language_code, _FIELD_INVALID_PHRASES[_DEFAULT_LANGUAGE])
+    phrase = table.get(invalid.key)
+    if phrase:
+        return phrase
+    generic = _PHRASES.get(language_code, _PHRASES[_DEFAULT_LANGUAGE])["invalid_field_generic"]
+    return generic.format(item=invalid.label)
 
 
 class RuleBasedAIProvider(AIProvider):
@@ -485,16 +637,19 @@ class RuleBasedAIProvider(AIProvider):
             if request.customer_name
             else p["greeting"]
         )
-        label = request.complaint_label.lower()
 
         if request.kind == ReplyKind.ACKNOWLEDGE:
-            ref = (
-                p["ref_suffix"].format(ref=request.ticket_reference)
-                if request.ticket_reference
-                else ""
+            lines = [greeting, "", p["ack_intro"], ""]
+            lines.extend(
+                f"{_field_display_label(f, request.language_code)}: {f.value}"
+                for f in request.collected_fields
             )
-            body = f"{greeting}\n\n{p['ack'].format(label=label, ref=ref)}\n"
-            return ReplyDraft(body=body)
+            lines.append("")
+            lines.append(p["ack_sent_to_team"])
+            if request.ticket_reference:
+                lines.append("")
+                lines.append(f"{p['ack_reference_label']}: {request.ticket_reference}")
+            return ReplyDraft(body="\n".join(lines) + "\n")
 
         if request.kind == ReplyKind.CLARIFY:
             # `request.guidance` is a free-text instruction meant for a real
@@ -507,27 +662,18 @@ class RuleBasedAIProvider(AIProvider):
             )
             return ReplyDraft(body=body)
 
-        # ASK
-        if request.missing_fields and not request.invalid_fields:
-            # The engine guarantees at most one entry here - see
-            # ConversationEngine.advance, which asks for exactly one missing
-            # field per turn, in schema order. A short, standalone, natural
-            # question: no greeting scaffold, no bullet list - this should
-            # read like a reply in an email thread, not a form.
-            question = _field_question(request.missing_fields[0], request.language_code)
-            return ReplyDraft(body=f"{question}\n")
+        # ASK - the engine guarantees at most one entry total across
+        # missing_fields/invalid_fields (see ConversationEngine.advance,
+        # which resolves exactly one next-unresolved field per turn). A
+        # short, standalone, natural message: no greeting scaffold, no
+        # bullet list, no internal field name or raw validation error text -
+        # this should read like a reply in an email thread, not a form.
+        if request.invalid_fields:
+            correction = _field_invalid_message(request.invalid_fields[0], request.language_code)
+            return ReplyDraft(body=f"{correction}\n")
 
-        # A value the customer already gave needs correcting (optionally
-        # alongside the next missing field) - this still benefits from a
-        # little more framing than a single bare question.
-        parts = [greeting, "", p["invalid_intro"]]
-        parts.extend(f"  - {f.label}: {f.error}" for f in request.invalid_fields)
-        if request.missing_fields:
-            parts.append("")
-            parts.append(_field_question(request.missing_fields[0], request.language_code))
-        parts.append("")
-        parts.append(p["footer"])
-        return ReplyDraft(body="\n".join(parts) + "\n")
+        question = _field_question(request.missing_fields[0], request.language_code)
+        return ReplyDraft(body=f"{question}\n")
 
     # ---- helpers ----
 

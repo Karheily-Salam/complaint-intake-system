@@ -66,9 +66,6 @@ class Settings(BaseSettings):
     email_provider: str = "mock"  # mock (only mock implemented in the prototype)
     support_inbox_address: str = "complaints@example.com"
 
-    # ---- Ticketing ----
-    ticket_reference_prefix: str = "CMP"
-
     @property
     def complaint_schema_dir(self) -> Path:
         return BACKEND_DIR / "app" / "domain" / "complaint_schemas" / "definitions"

@@ -175,6 +175,43 @@ language.
   extraction, exactly like `known` already does.
 - See `tests/test_pending_field_context.py`.
 
+### Customer-facing wording (corrections and the final confirmation)
+
+Two kinds of customer-facing text are deliberately never built from raw
+internal data:
+
+- **An invalid answer** never shows the schema key or the raw validation
+  error (e.g. "Not a valid email address."). `RuleBasedAIProvider` maps the
+  single invalid field's key to a natural, per-language explanation of what
+  was wrong and what to send instead - `_FIELD_INVALID_PHRASES`, with a
+  format/example where that helps (email, date). `OllamaAIProvider`'s prompt
+  is given the raw error only as context for itself and is explicitly told
+  never to quote it. Both still address only the one field
+  `ConversationEngine` says is pending - see "Pending field" above.
+- **The final ticket confirmation** never names the internal complaint
+  classification (e.g. "withdrawal problem"). `ConversationEngine.compose_ticket_confirmation`
+  builds `collected_fields` from the resolved, non-free-text values in
+  schema order (`FieldType.TEXT` fields like `problem_description` are
+  excluded - a narrative paragraph isn't a concise fact to list); each
+  provider then displays them under its own localized noun labels
+  (`RuleBasedAIProvider._FIELD_DISPLAY_LABELS`, e.g. "رقم المستخدم" /
+  "User ID" / "ID пользователя" - never the raw key), states the
+  information was sent to the specialist team, and includes the ticket
+  reference.
+- See `tests/test_customer_facing_messages.py`.
+
+### Ticket reference
+
+The customer-facing reference is numeric-only (e.g. `"000001"`), generated
+by `TicketService._make_reference` from the ticket's own auto-incrementing
+primary key - already unique and collision-safe by the database itself, on
+SQLite today and identically on PostgreSQL later, so there's no separate
+counter to keep in sync or race on. The AI layer never generates or alters
+it: `TicketService` creates the row (flushing once to get its id, then
+setting the real reference), and the *same* persisted value flows into the
+dashboard (`GET /api/v1/tickets`), the API response, and
+`ReplyRequest.ticket_reference` for the confirmation text.
+
 ## Adding / changing a complaint type
 
 Edit or add a YAML file in `app/domain/complaint_schemas/definitions/`. No engine,

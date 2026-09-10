@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models.complaint import Complaint
@@ -34,9 +34,6 @@ class TicketRepository:
                 .options(selectinload(Ticket.customer))
             )
         )
-
-    def next_sequence(self) -> int:
-        return (self.db.scalar(select(func.count(Ticket.id))) or 0) + 1
 
     def add(self, ticket: Ticket) -> Ticket:
         self.db.add(ticket)

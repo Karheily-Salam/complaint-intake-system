@@ -24,11 +24,19 @@ performs no I/O.
 
 from __future__ import annotations
 
-from app.ai.base import AIProvider, InvalidField, ReplyDraft, ReplyKind, ReplyRequest, TypeOption
+from app.ai.base import (
+    AIProvider,
+    CollectedFieldView,
+    InvalidField,
+    ReplyDraft,
+    ReplyKind,
+    ReplyRequest,
+    TypeOption,
+)
 from app.conversation.state import ConversationState, EngineOutcome, FieldOutcome
 from app.core.config import settings
 from app.domain.complaint_schemas.registry import ComplaintSchemaRegistry
-from app.domain.complaint_schemas.spec import ComplaintSchema, FieldSpec
+from app.domain.complaint_schemas.spec import ComplaintSchema, FieldSpec, FieldType
 from app.domain.enums import ConversationStatus, FieldStatus
 from app.domain.validation import validate_field
 
@@ -148,6 +156,7 @@ class ConversationEngine:
                             key=next_unresolved.key,
                             label=next_unresolved.label,
                             error=next_fo.validation_error or "Please check this value.",
+                            example=next_unresolved.example,
                         )
                     ]
                     if is_invalid
@@ -165,10 +174,25 @@ class ConversationEngine:
         Called by IntakeService, never from within :meth:`advance`, because
         the real ``ticket_reference`` only exists after the caller has
         actually created the ticket. The AI provider only phrases the given
-        reference into natural text - it never generates or invents one
-        (see ``ReplyRequest.ticket_reference``).
+        reference and collected values into natural text - it never
+        generates/invents the reference (see ``ReplyRequest.ticket_reference``)
+        and never decides which fields were collected (see
+        ``collected_fields`` below).
         """
         schema = self._registry.get(outcome.complaint_type)
+        fields_by_key = {fo.key: fo for fo in outcome.fields}
+        collected: list[CollectedFieldView] = []
+        for spec in schema.fields_for():
+            # Free-text narrative (problem_description) is deliberately left
+            # out of the structured summary - it's the customer's own words,
+            # often a full paragraph, not a concise fact to list; the engine
+            # excludes it by type, not by singling out that one field key.
+            if spec.type == FieldType.TEXT:
+                continue
+            fo = fields_by_key.get(spec.key)
+            if fo is not None and fo.is_present and fo.value:
+                collected.append(CollectedFieldView(key=spec.key, label=spec.label, value=fo.value))
+
         return await self._ai.compose_reply(
             ReplyRequest(
                 kind=ReplyKind.ACKNOWLEDGE,
@@ -176,6 +200,7 @@ class ConversationEngine:
                 customer_name=customer_name,
                 language_code=outcome.language_code,
                 ticket_reference=ticket_reference,
+                collected_fields=collected,
             )
         )
 
