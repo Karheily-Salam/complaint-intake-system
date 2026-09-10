@@ -221,6 +221,18 @@ Alembic is the only schema-authoring mechanism - there is no
   tests, and `scripts.reset_db` are guaranteed to use the identical physical
   file no matter which directory a command is run from. Already-absolute
   URLs (including Postgres URLs in production) are left untouched.
+- **`alembic/env.py`'s `fileConfig()` call passes `disable_existing_loggers=False`.**
+  This matters only because migrations also run *in-process* on startup (the
+  point above) - `env.py` executes there too, and `fileConfig`'s default
+  disables every logger not declared in `alembic.ini`'s `[loggers]` section,
+  including uvicorn's. Without this, a perfectly successful startup goes
+  silent right after "Applying database migrations" (no "Application
+  startup complete.", no request logs, no visibility into any later error)
+  and looks hung, even though the server is usually still running - the
+  plain `alembic` CLI is unaffected either way since it has no other
+  process-wide logging to preserve. See
+  `tests/test_migrations_logging.py` and
+  `tests/test_startup_migration_subprocess.py`.
 
 See `tests/test_fresh_database_startup.py` for the regression test covering
 this end to end (fresh SQLite file, real app startup, `POST /api/v1/inbox`

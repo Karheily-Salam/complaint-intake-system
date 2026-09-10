@@ -12,7 +12,16 @@ config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False is required here: this env.py also runs
+    # in-process when app.core.migrations.run_migrations() calls Alembic
+    # programmatically from the FastAPI lifespan (not just via the separate
+    # `alembic` CLI process). fileConfig()'s default (True) disables every
+    # logger not declared in alembic.ini's [loggers] section - including
+    # uvicorn's - which silently swallows "Application startup complete."
+    # and any subsequent uvicorn/app log output for the rest of the process,
+    # making a perfectly successful startup look hung. The CLI's own
+    # alembic/root/sqlalchemy logging is unaffected either way.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
