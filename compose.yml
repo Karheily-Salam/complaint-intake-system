@@ -1,12 +1,13 @@
-# Production deployment for the Timeweb Cloud VPS.
+# Runs the whole stack, locally and on the VPS.
 #
-#   docker compose up -d --build
+#   docker compose up --build        -> http://localhost/
+#
+# Works on a clean clone with no configuration: the defaults below are enough
+# for a demo (mock email, no mailbox, no credentials). A real deployment adds
+# ./backend/.env, which is git-ignored and overrides anything here.
 #
 # Only the frontend (Nginx) is published, on host port 80. FastAPI is reachable
 # only on the internal compose network as "backend:8000".
-#
-# Requires ./backend/.env (copy from ./backend/.env.example and set the
-# production values - see the "Production (Docker)" block in that file).
 
 services:
   backend:
@@ -14,7 +15,23 @@ services:
     image: complaint-intake-backend:latest
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      # Optional on purpose. Without `required: false` a fresh clone fails at
+      # `docker compose up` before anything starts, because this file is
+      # git-ignored and so never exists on a first checkout.
+      - path: ./backend/.env
+        required: false
+    environment:
+      # Demo-safe defaults; every one is overridden by backend/.env when present.
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/complaint_intake.db}
+      RUN_MIGRATIONS_ON_STARTUP: ${RUN_MIGRATIONS_ON_STARTUP:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-rule_based}
+      # Never a real mailbox by default - a clone must not be able to send mail.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-mock}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+      DEBUG: ${DEBUG:-false}
+      # Not a secret: it only unlocks the staff API on a throwaway local demo.
+      # Production sets a generated value in backend/.env.
+      STAFF_API_KEY: ${STAFF_API_KEY:-local-demo-key}
     volumes:
       # Persist the SQLite database (DATABASE_URL=sqlite:////app/data/complaint_intake.db).
       - backend_data:/app/data
