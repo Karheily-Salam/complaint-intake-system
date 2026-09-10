@@ -202,3 +202,125 @@ code {
   border-radius: 4px;
   font-size: 0.85em;
 }
+
+/* ---------- demo: mail client layout ---------- */
+.demo-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+  gap: 1.1rem;
+  align-items: start;
+}
+@media (max-width: 1100px) { .demo-layout { grid-template-columns: 1fr; } }
+
+.scenario-picker h2 { margin-bottom: 0.4rem; }
+.scenario-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.scenario-btn:hover { border-color: var(--accent); }
+.scenario-btn.active { border-color: var(--accent); background: #14324a; }
+.scenario-btn strong { display: block; font-size: 0.86rem; margin-bottom: 0.15rem; }
+.scenario-btn span { display: block; font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
+
+.mail-pane { display: flex; flex-direction: column; min-height: 460px; }
+.mail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+.mail-header h2 { margin: 0 0 0.15rem; }
+.mail-empty { margin: 2.5rem 0; text-align: center; }
+.thread { display: flex; flex-direction: column; gap: 0.85rem; flex: 1; }
+
+.email { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.email.inbound { background: var(--panel-2); }
+.email.outbound { background: #14324a; border-color: #1d4e6e; }
+.email > header {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  border-bottom: 1px solid var(--border);
+}
+.email-dir { font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+.email.inbound .email-dir { color: var(--muted); }
+.email.outbound .email-dir { color: var(--accent); }
+.email-time { color: var(--muted); }
+.email-meta { margin: 0; padding: 0.55rem 0.75rem 0; font-size: 0.74rem; }
+.email-meta > div { display: flex; gap: 0.5rem; margin-bottom: 0.15rem; }
+.email-meta dt { color: var(--muted); min-width: 3.2rem; }
+.email-meta dd { margin: 0; }
+.email-body { padding: 0.6rem 0.75rem 0.85rem; margin: 0; white-space: pre-wrap; line-height: 1.55; }
+
+.composer { border-top: 1px solid var(--border); padding-top: 0.85rem; margin-top: 0.9rem; }
+.composer label { display: block; font-size: 0.76rem; color: var(--muted); margin-bottom: 0.35rem; }
+.composer .queued {
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  white-space: pre-wrap;
+}
+.composer-done { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.composer-done p { margin: 0; }
+
+.extraction-pane h3 {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 1rem 0 0.35rem;
+}
+.ticket-created {
+  margin-top: 1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  background: #10331f;
+  border: 1px solid #1e5c37;
+  color: var(--ok);
+  font-size: 0.85rem;
+}
+
+/* ---------- support inbox ---------- */
+.ticket-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.ticket-card {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.ticket-card:hover { border-color: var(--accent); }
+.ticket-card.active { border-color: var(--accent); background: #14324a; }
+.ticket-card-top { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
+.ticket-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+.ticket-card-customer { font-size: 0.8rem; margin-bottom: 0.2rem; }
+.ticket-card-desc {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ticket-card-time { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
+.ticket-detail-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.status-new { color: var(--accent); }
+.status-resolved, .status-closed { color: var(--ok); }
+.status-in_progress { color: var(--warn); }

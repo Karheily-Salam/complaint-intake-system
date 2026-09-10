@@ -1,22 +1,25 @@
 import { useState } from "react";
 import { Overview } from "@/pages/Overview";
-import { MailboxSimulator } from "@/pages/MailboxSimulator";
-import { EmployeeDashboard } from "@/pages/EmployeeDashboard";
+import { MailboxDemo } from "@/pages/MailboxDemo";
+import { SupportInbox } from "@/pages/SupportInbox";
 
-type View = "overview" | "mailbox" | "dashboard";
+type View = "overview" | "mailbox" | "support";
 
 const GITHUB_URL = "https://github.com/Karheily-Salam/complaint-intake-system";
 
 const TABS: { id: View; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "mailbox", label: "Live demo" },
-  { id: "dashboard", label: "Support dashboard" },
+  { id: "mailbox", label: "Customer mailbox" },
+  { id: "support", label: "Support inbox" },
 ];
 
 export function App() {
-  // Overview first: a visitor should learn what this is before being handed a
-  // form. The demo is one click away.
+  // Overview first: a visitor should learn what this is before being handed an
+  // interface. The demo is one click away.
   const [view, setView] = useState<View>("overview");
+  // Bumped when the demo creates a ticket, so the support inbox reloads and
+  // the two halves of the product stay in step.
+  const [ticketsVersion, setTicketsVersion] = useState(0);
 
   return (
     <>
@@ -42,8 +45,10 @@ export function App() {
       </header>
       <main>
         {view === "overview" && <Overview onOpenDemo={() => setView("mailbox")} />}
-        {view === "mailbox" && <MailboxSimulator />}
-        {view === "dashboard" && <EmployeeDashboard />}
+        {view === "mailbox" && (
+          <MailboxDemo onTicketCreated={() => setTicketsVersion((v) => v + 1)} />
+        )}
+        {view === "support" && <SupportInbox refreshToken={ticketsVersion} />}
       </main>
       <footer className="app-footer">
         Portfolio project · FastAPI · React · Docker ·{" "}
