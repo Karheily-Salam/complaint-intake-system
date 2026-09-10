@@ -24,7 +24,7 @@ performs no I/O.
 
 from __future__ import annotations
 
-from app.ai.base import AIProvider, InvalidField, ReplyKind, ReplyRequest, TypeOption
+from app.ai.base import AIProvider, InvalidField, ReplyDraft, ReplyKind, ReplyRequest, TypeOption
 from app.conversation.state import ConversationState, EngineOutcome, FieldOutcome
 from app.core.config import settings
 from app.domain.complaint_schemas.registry import ComplaintSchemaRegistry
@@ -108,14 +108,12 @@ class ConversationEngine:
         if not missing and not invalid:
             outcome.is_complete = True
             outcome.next_status = ConversationStatus.VALIDATING
-            outcome.reply = await self._ai.compose_reply(
-                ReplyRequest(
-                    kind=ReplyKind.ACKNOWLEDGE,
-                    complaint_label=schema.label,
-                    customer_name=state.customer_name,
-                    language_code=outcome.language_code,
-                )
-            )
+            # No reply is composed here: the ticket (and its reference) does
+            # not exist yet - creating it is a DB side effect owned by
+            # IntakeService/TicketService, and this engine performs no I/O.
+            # IntakeService calls compose_ticket_confirmation() below once
+            # ticket creation has actually succeeded, so the confirmation can
+            # include the real reference instead of omitting or inventing it.
             return outcome
 
         outcome.next_status = ConversationStatus.COLLECTING_INFO
@@ -142,6 +140,28 @@ class ConversationEngine:
             )
         )
         return outcome
+
+    async def compose_ticket_confirmation(
+        self, outcome: EngineOutcome, customer_name: str | None, ticket_reference: str
+    ) -> ReplyDraft:
+        """Compose the final ACKNOWLEDGE reply once ticket creation has succeeded.
+
+        Called by IntakeService, never from within :meth:`advance`, because
+        the real ``ticket_reference`` only exists after the caller has
+        actually created the ticket. The AI provider only phrases the given
+        reference into natural text - it never generates or invents one
+        (see ``ReplyRequest.ticket_reference``).
+        """
+        schema = self._registry.get(outcome.complaint_type)
+        return await self._ai.compose_reply(
+            ReplyRequest(
+                kind=ReplyKind.ACKNOWLEDGE,
+                complaint_label=schema.label,
+                customer_name=customer_name,
+                language_code=outcome.language_code,
+                ticket_reference=ticket_reference,
+            )
+        )
 
     # ------------------------------------------------------------------ helpers
 

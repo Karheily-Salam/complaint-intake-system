@@ -106,10 +106,6 @@ class IntakeService:
             complaint.status = ComplaintStatus.COLLECTING
         conversation.status = outcome.next_status
 
-        reply_body = outcome.reply.body if outcome.reply else None
-        if reply_body:
-            await self._send_reply(conversation, customer.email, conversation.subject, reply_body)
-
         ticket_reference: str | None = None
         if outcome.is_complete:
             ticket_service = TicketService(self.db)
@@ -119,6 +115,17 @@ class IntakeService:
                 ticket = ticket_service.refresh_snapshot(complaint.ticket, complaint)
             ticket_reference = ticket.reference
             conversation.status = ConversationStatus.COMPLETED
+            # Only now does the real reference exist, so the confirmation is
+            # composed here rather than inside ConversationEngine.advance.
+            reply = await self.engine.compose_ticket_confirmation(
+                outcome, customer.name, ticket_reference
+            )
+            reply_body = reply.body
+        else:
+            reply_body = outcome.reply.body if outcome.reply else None
+
+        if reply_body:
+            await self._send_reply(conversation, customer.email, conversation.subject, reply_body)
 
         self.db.commit()
 

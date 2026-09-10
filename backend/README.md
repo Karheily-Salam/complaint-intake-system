@@ -97,6 +97,12 @@ Every customer-facing reply is written in the language of the customer's
 - This only changes *how* the reply is phrased. Classification, required
   fields, completeness, and ticket creation are entirely unaffected - see
   `tests/test_multilingual_replies.py`.
+- The final ticket-confirmation reply is composed *after* ticket creation,
+  not inside `ConversationEngine.advance` (which performs no I/O and so
+  cannot create the ticket) - see `ConversationEngine.compose_ticket_confirmation`,
+  called from `IntakeService` once the real `Ticket.reference` exists, so the
+  confirmation can include it instead of omitting it or an LLM inventing one.
+  See `tests/test_ticket_confirmation_includes_reference.py`.
 
 ### One field at a time
 
