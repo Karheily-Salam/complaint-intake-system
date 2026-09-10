@@ -4,17 +4,24 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.email.base import MAX_BODY_CHARS, MAX_SUBJECT_CHARS
 from app.schemas.common import ORMModel
 from app.schemas.message import MessageOut
 
 
 class InboundEmailIn(BaseModel):
-    """Simulated inbound customer email (what MockEmailProvider would receive)."""
+    """Simulated inbound customer email (what MockEmailProvider would receive).
+
+    This endpoint is reachable by anyone who can open the demo page, so the
+    bounds below are what stop one request from writing an arbitrarily large
+    row into the database. They mirror the limits real inbound mail gets in
+    app/email/base.py, so both intake paths behave the same.
+    """
 
     from_addr: EmailStr
-    body: str = Field(min_length=1)
-    subject: str | None = None
-    customer_name: str | None = None
+    body: str = Field(min_length=1, max_length=MAX_BODY_CHARS)
+    subject: str | None = Field(default=None, max_length=MAX_SUBJECT_CHARS)
+    customer_name: str | None = Field(default=None, max_length=200)
     # Continue an existing conversation; omit to start a new one.
     conversation_id: int | None = None
 

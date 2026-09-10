@@ -7,10 +7,43 @@ API / Microsoft Graph provider) must not require engine or service changes.
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Every value below arrives from a stranger's mail client. Bounds are applied
+# here, at the model, rather than in one provider, so any transport (IMAP now,
+# a webhook later) is covered by construction.
+#
+# Sizes are chosen to fit the database columns that store them
+# (messages.subject 300, messages.external_message_id 500, customers.email
+# 320): SQLite silently accepts over-long values, PostgreSQL raises, and a
+# truncation bug that only appears after a database swap is worth avoiding.
+MAX_SUBJECT_CHARS = 200          # leaves room for "Re: " + " [Ref:token]" in a reply
+MAX_BODY_CHARS = 100_000         # ~100KB of text is far beyond any real complaint
+MAX_ADDRESS_CHARS = 320
+MAX_MESSAGE_ID_CHARS = 500
+MAX_REFERENCES = 50
+
+# Control characters, most importantly CR/LF. A header value containing one is
+# rejected outright by Python's email package when we later build a reply -
+# which would make send() raise every time, so the message could never be
+# acknowledged and would be retried forever. A subject can genuinely carry one
+# despite RFC 5322 folding, because an encoded-word decodes *after* unfolding
+# (e.g. "Subject: =?utf-8?B?<base64 with a newline>?=").
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_LINE_BREAKS = re.compile(r"[\r\n]+")
+
+
+def header_safe(value: str | None, *, limit: int) -> str | None:
+    """Make an untrusted header value safe to store and to echo into a reply."""
+    if value is None:
+        return None
+    cleaned = _LINE_BREAKS.sub(" ", value)
+    cleaned = _CONTROL_CHARS.sub("", cleaned).strip()
+    return cleaned[:limit]
 
 
 def _now() -> datetime:
@@ -41,6 +74,39 @@ class InboundEmail(BaseModel):
     # instead - never rely on this for real email threading.
     thread_id: str | None = None
 
+    @field_validator("subject", "auto_submitted", "precedence")
+    @classmethod
+    def _clean_short_header(cls, value: str | None) -> str | None:
+        return header_safe(value, limit=MAX_SUBJECT_CHARS)
+
+    @field_validator("message_id", "in_reply_to")
+    @classmethod
+    def _clean_message_id(cls, value: str | None) -> str | None:
+        return header_safe(value, limit=MAX_MESSAGE_ID_CHARS)
+
+    @field_validator("from_addr", "to_addr")
+    @classmethod
+    def _clean_address(cls, value: str) -> str:
+        return header_safe(value, limit=MAX_ADDRESS_CHARS) or ""
+
+    @field_validator("references")
+    @classmethod
+    def _clean_references(cls, value: list[str]) -> list[str]:
+        # A References chain grows with every hop and is attacker-controlled;
+        # each entry costs a database lookup during threading, so both the
+        # entries and the length of the chain are bounded.
+        cleaned = [header_safe(item, limit=MAX_MESSAGE_ID_CHARS) for item in value]
+        return [item for item in cleaned if item][:MAX_REFERENCES]
+
+    @field_validator("body")
+    @classmethod
+    def _bound_body(cls, value: str) -> str:
+        # Keeps a huge (or maliciously padded) message from being summarised,
+        # re-summarised on every later turn, and stored in full.
+        if len(value) <= MAX_BODY_CHARS:
+            return value
+        return value[:MAX_BODY_CHARS] + "\n\n[message truncated]"
+
 
 class OutboundEmail(BaseModel):
     to_addr: str
@@ -53,6 +119,13 @@ class OutboundEmail(BaseModel):
     references: list[str] = Field(default_factory=list)
     # See InboundEmail.thread_id - mock/dev only.
     thread_id: str | None = None
+
+    @field_validator("subject")
+    @classmethod
+    def _clean_subject(cls, value: str) -> str:
+        # Also covers a reply built from a conversation stored before inbound
+        # sanitising existed, so a legacy row cannot wedge the poller.
+        return header_safe(value, limit=MAX_SUBJECT_CHARS + 100) or "Your complaint"
 
 
 class SentEmail(BaseModel):

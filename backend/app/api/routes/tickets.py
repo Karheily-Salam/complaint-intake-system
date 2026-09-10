@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import DbDep
 from app.schemas.ticket import TicketDetail, TicketStatusUpdate, TicketSummary
@@ -10,7 +10,12 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[TicketSummary])
-def list_tickets(db: DbDep, limit: int = 100) -> list[TicketSummary]:
+def list_tickets(
+    db: DbDep,
+    # Bounded: an unbounded limit lets one public request pull the whole
+    # table into memory and serialise it, on a host with 2GB of RAM.
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[TicketSummary]:
     return TicketService(db).list_tickets(limit=limit)  # type: ignore[return-value]
 
 

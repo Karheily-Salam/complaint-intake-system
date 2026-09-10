@@ -36,6 +36,11 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Alembic writes these files, not us. They must stay faithful to what
+# `alembic revision --autogenerate` produced, so reformatting them would be
+# churn that makes future generated revisions look inconsistent. env.py is
+# hand-written and stays linted.
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
