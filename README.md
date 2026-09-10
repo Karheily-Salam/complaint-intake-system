@@ -13,8 +13,55 @@ support staff — then confirms to the customer with a real reference number.
 **There is no customer-facing form, portal, login, or link. The mailbox is the
 interface.**
 
-Live: **http://72.56.114.70/** · [Deployment notes](DEPLOYMENT.md) ·
-[Server/infrastructure notes](SERVER.md)
+**Live demo:** http://72.56.114.70/ — no login, no credentials, synthetic data
+only. Open **Customer mailbox**, pick a scenario, and watch a complaint become
+a ticket; then open **Support inbox** to see what support receives.
+
+```bash
+git clone https://github.com/Karheily-Salam/complaint-intake-system.git
+cd complaint-intake-system && docker compose up --build   # → http://localhost/
+```
+
+No configuration, no API keys and no mailbox required — it runs on the mock
+email provider by default.
+
+## Screenshots
+
+<!-- TODO: capture from the running app and drop into docs/images/
+     1. demo-thread.png     - Customer mailbox mid-conversation
+     2. demo-extraction.png - extraction panel at the moment a ticket is created
+     3. support-inbox.png   - Support inbox ticket detail
+     A short GIF of one scenario running end to end beats all three. -->
+
+*Not captured yet — use the live link above, or run the two commands.*
+
+---
+
+## Contents
+
+- [Why it exists](#why-it-exists) · [What it does](#what-it-does) ·
+  [Architecture](#architecture)
+- [The design rule](#the-design-rule-ai-assists-deterministic-code-decides) ·
+  [Demo scenarios](#demo-scenarios) · [Running locally](#running-locally)
+- [Two API surfaces](#two-api-surfaces-public-demo-vs-staff) ·
+  [Security](#security-considerations) · [Email integration](#email-integration)
+- [Testing](#testing) · [Production deployment](#production-deployment) ·
+  [Honest limits](#honest-limits)
+- [Architecture decisions (ADRs)](docs/adr/) ·
+  [Backup & restore drill](docs/operations/backup-restore.md) ·
+  [Deployment](DEPLOYMENT.md) · [Server notes](SERVER.md)
+
+## Current status
+
+| Environment | Email | Data |
+|---|---|---|
+| **Local** (`docker compose up`) | `mock` — nothing sent or received | synthetic, created by you |
+| **Deployed** (http://72.56.114.70/) | `mock` — no mailbox attached | synthetic demo records only |
+| **Real email** (`imap_smtp`) | implemented and tested, not switched on | needs a mailbox + credentials |
+
+The IMAP/SMTP integration is complete and covered by tests; the deployment is
+simply not pointed at a live mailbox yet. What remains is under
+[Honest limits](#honest-limits).
 
 ---
 
@@ -38,8 +85,8 @@ resulting ticket still has to be complete, valid, and never duplicated.
   guessing when confidence is low
 - Extracts details already present in the message, in any order, across turns
 - Asks for **one** missing field at a time — never a checklist
-- Validates each answer and re-asks the same field when it is wrong
-- Lets a customer correct a value they already gave
+- Validates each answer and re-asks the same field when it is wrong, until it
+  is right
 - Replies in the customer's own language (English, Arabic, Russian)
 - Creates a ticket with a numeric reference once — and only once — the schema's
   requirements are actually satisfied
@@ -87,10 +134,12 @@ backend/
     repositories/     data access
     api/              FastAPI routes
   alembic/            migrations (the only schema-authoring mechanism)
-  scripts/            check_email.py — mailbox pre-flight
-  tests/              190 tests
-frontend/             React + TypeScript SPA (overview, demo, support dashboard)
+  scripts/            check_email.py (mailbox pre-flight), seed_demo.py
+  tests/              236 tests
+frontend/             React + TypeScript SPA (overview, mail-client demo, support inbox)
 ops/scripts/          backup + health-check scripts used on the server
+docs/adr/             architecture decision records
+docs/operations/      backup and restore drill
 ```
 
 ## The design rule: AI assists, deterministic code decides
@@ -143,6 +192,38 @@ Behaviours worth noting: a bare answer (`"583921"`) is interpreted against the
 field that was actually asked; an invalid answer keeps priority over other
 missing fields rather than jumping ahead; and volunteered extra fields are
 absorbed instead of being asked for again.
+
+**On correcting an already-accepted value.** The engine supports it — a later
+valid value replaces an earlier one, and the ticket snapshot follows — but
+whether a correction is *detected* depends on the AI provider. The default
+`rule_based` provider deliberately does not re-extract a field that is already
+valid, because recognising "actually, it was X" needs real language
+understanding; it is `AI_PROVIDER=ollama` that makes that path live. Invalid
+values are always re-extracted and can always be corrected, in either provider.
+
+## Demo scenarios
+
+The demo ships four scenarios, each a list of customer emails. Every reply
+comes from the real backend — nothing on the system's side is scripted.
+
+| Scenario | What it demonstrates |
+|---|---|
+| **Vague complaint** | The first email is too vague to classify, so the engine asks for clarification instead of guessing a type. |
+| **Complete in one email** | Everything arrives at once; the engine skips straight to the ticket rather than asking for what it already has. |
+| **Invalid value, then corrected** | A malformed address fails schema validation. The engine explains the problem, re-asks the same field, and only moves on once it is valid. |
+| **Multi-turn with bare answers** | The customer replies with unlabelled values. Each is understood as the answer to the field just asked — contextual extraction, one field at a time. |
+
+There is also a free-form option for typing your own email.
+
+To populate a deployment with those conversations already completed:
+
+```bash
+docker compose exec backend python -m scripts.seed_demo          # add them
+docker compose exec backend python -m scripts.seed_demo --reset  # start clean first
+```
+
+`--reset` deletes demo-scoped rows only; real conversations, customers and
+tickets are never touched, and tests assert it.
 
 ## Email integration
 
@@ -302,6 +383,17 @@ Ubuntu VPS
 
 ## Running locally
 
+### With Docker (recommended)
+
+```bash
+docker compose up --build     # http://localhost/
+```
+
+Nothing to configure. `backend/.env` is optional and overrides the demo
+defaults when present.
+
+### Without Docker
+
 Prerequisites: Python 3.12+, Node.js 20+.
 
 ```bash
@@ -356,7 +448,7 @@ path, including error paths. Full procedure: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe -m pytest      # 190 tests
+../.venv/Scripts/python.exe -m pytest      # 236 tests
 ../.venv/Scripts/python.exe -m ruff check .
 ```
 
@@ -395,9 +487,16 @@ for it. Memory ceilings are set per service. Database backups are timestamped,
 gzipped, and taken with SQLite's online-backup API (never a raw file copy of a
 live database).
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for build/deploy/rollback and
-[SERVER.md](SERVER.md) for the host itself (firewall, SSH model, backups,
-monitoring, multi-project layout).
+`GET /api/v1/ops/stats` (staff key required) reports ticket and conversation
+counts, which email transport is live, and the poller's own health — last
+success, consecutive failures, last error type. A poller that has quietly
+stopped otherwise looks exactly like a quiet mailbox.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for build/deploy/rollback, [SERVER.md](SERVER.md)
+for the host itself (firewall, SSH model, backups, monitoring), the
+[backup and restore drill](docs/operations/backup-restore.md) for the verified
+recovery procedure, and the [ADRs](docs/adr/) for why the significant decisions
+were made.
 
 ### Honest limits
 

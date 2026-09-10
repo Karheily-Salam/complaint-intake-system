@@ -259,7 +259,7 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
               SQLite on a persistent volume, UFW-firewalled VPS
             </li>
             <li>
-              <strong>Tests</strong> — 190 automated tests covering the conversation
+              <strong>Tests</strong> — 236 automated tests covering the conversation
               lifecycle, threading, idempotency, retry behaviour, authentication, and
               security boundaries
             </li>
