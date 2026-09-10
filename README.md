@@ -1,5 +1,7 @@
 # Complaint Intake System
 
+[![CI](https://github.com/Karheily-Salam/complaint-intake-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Karheily-Salam/complaint-intake-system/actions/workflows/ci.yml)
+
 **Email-based customer complaint intake with AI-assisted classification and
 structured ticket creation.**
 
@@ -286,6 +288,13 @@ cd backend
 ../.venv/Scripts/python.exe -m pytest      # 148 tests
 ../.venv/Scripts/python.exe -m ruff check .
 ```
+
+Both run in CI on every push and pull request, together with the frontend
+typecheck and production build — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). CI needs no secrets and
+no services: the suite runs against the mock email provider and the
+deterministic rule-based AI provider, each test using its own throwaway SQLite
+file.
 
 Coverage is behavioural rather than incidental — the suite pins down the
 conversation lifecycle (all three complaint types, low-confidence
