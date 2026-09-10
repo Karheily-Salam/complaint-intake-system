@@ -216,7 +216,12 @@ async def test_failures_are_reported_not_swallowed(poller, monkeypatch, caplog):
     with caplog.at_level(logging.ERROR):
         assert await poller.poll_once() == 0
 
-    assert any("Failed to fetch new email" in r.message for r in caplog.records)
+    assert any("poll=failed" in r.message for r in caplog.records), (
+        "a fetch failure must be reported, not swallowed"
+    )
+    # The failure streak is part of the message, so a recurring outage is
+    # visible in the log rather than only in the ops endpoint.
+    assert any("consecutive_failures" in r.message for r in caplog.records)
     # And nothing resembling a credential is in the log.
     assert "password" not in caplog.text.lower()
 

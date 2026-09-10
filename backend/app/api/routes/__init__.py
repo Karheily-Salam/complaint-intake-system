@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import conversations, demo, health, inbox, schemas, tickets
+from app.api.routes import conversations, demo, health, inbox, ops, schemas, tickets
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(demo.router, prefix="/demo", tags=["demo"])
 # (declared on each router, so a new route inherits it by default).
 api_router.include_router(conversations.router, prefix="/conversations", tags=["conversations"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
+api_router.include_router(ops.router, prefix="/ops", tags=["ops"])

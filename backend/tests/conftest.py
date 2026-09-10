@@ -8,6 +8,8 @@ os.environ.setdefault("EMAIL_PROVIDER", "mock")
 # Tests exercise the staff API with a known key. Never a real credential.
 os.environ.setdefault("STAFF_API_KEY", "test-staff-key")
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -17,6 +19,7 @@ from app.core.database import apply_sqlite_pragmas
 from app.db.base import Base
 from app.main import create_app
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 STAFF_KEY = os.environ["STAFF_API_KEY"]
 STAFF_HEADERS = {"X-API-Key": STAFF_KEY}
 

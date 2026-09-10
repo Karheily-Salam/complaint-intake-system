@@ -22,6 +22,9 @@ backoff, which at this scale would be complexity without benefit.
 from __future__ import annotations
 
 import asyncio
+import time
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -33,10 +36,70 @@ from app.services.intake_service import IntakeService
 logger = get_logger(__name__)
 
 
+@dataclass
+class PollerHealth:
+    """Whether the mailbox is actually being read.
+
+    A poller that has silently stopped working looks identical to a quiet
+    mailbox, so the answer to "is intake alive?" needs to be observable rather
+    than inferred from the absence of complaints. Held in memory on purpose:
+    it describes this process, resets with it, and is not worth a table.
+    """
+
+    last_poll_started_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_failure_at: datetime | None = None
+    # Message only - never the exception's payload, which could quote mail.
+    last_failure_reason: str | None = None
+    consecutive_failures: int = 0
+    total_polls: int = 0
+    total_emails_processed: int = 0
+
+    def record_start(self) -> None:
+        self.last_poll_started_at = datetime.now(UTC)
+        self.total_polls += 1
+
+    def record_success(self, processed: int) -> None:
+        self.last_success_at = datetime.now(UTC)
+        self.consecutive_failures = 0
+        self.total_emails_processed += processed
+
+    def record_failure(self, reason: str) -> None:
+        self.last_failure_at = datetime.now(UTC)
+        self.last_failure_reason = reason
+        self.consecutive_failures += 1
+
+    def snapshot(self) -> dict:
+        def iso(value: datetime | None) -> str | None:
+            return value.isoformat() if value else None
+
+        return {
+            "last_poll_started_at": iso(self.last_poll_started_at),
+            "last_success_at": iso(self.last_success_at),
+            "last_failure_at": iso(self.last_failure_at),
+            "last_failure_reason": self.last_failure_reason,
+            "consecutive_failures": self.consecutive_failures,
+            "total_polls": self.total_polls,
+            "total_emails_processed": self.total_emails_processed,
+        }
+
+
+# Process-wide, so the ops endpoint reports on the poller the app is running.
+poller_health = PollerHealth()
+
+
 class EmailPoller:
-    def __init__(self, provider: EmailProvider | None = None, session_factory=SessionLocal) -> None:
+    def __init__(
+        self,
+        provider: EmailProvider | None = None,
+        session_factory=SessionLocal,
+        health: PollerHealth | None = None,
+    ) -> None:
         self._provider = provider
         self._session_factory = session_factory
+        # Defaults to the process-wide record the ops endpoint reads; tests
+        # pass their own so they do not perturb it.
+        self.health = health or poller_health
 
     @property
     def provider(self) -> EmailProvider:
@@ -52,13 +115,19 @@ class EmailPoller:
         new work. Emails ignored as loop/auto-reply traffic are not counted,
         and neither are failures, which stay in the mailbox for the next poll.
         """
+        self.health.record_start()
+        started = time.monotonic()
         try:
             inbox = await self._with_timeout(self.provider.fetch_new(), "fetch")
-        except Exception:
+        except Exception as exc:
             # Network/auth failure, or a provider that hung past the ceiling:
             # nothing was consumed, so simply try again next interval. The
             # error is logged (never the credentials) rather than swallowed.
-            logger.exception("Failed to fetch new email; will retry next poll")
+            self.health.record_failure(type(exc).__name__)
+            logger.exception(
+                "poll=failed stage=fetch consecutive_failures=%d - will retry next poll",
+                self.health.consecutive_failures,
+            )
             return 0
 
         processed = 0
@@ -68,29 +137,47 @@ class EmailPoller:
                 # Acknowledged, not processed: it is answered/ignored on
                 # purpose, so leaving it unread would just re-trigger this
                 # every poll forever.
-                logger.info("Ignoring %s email %s", skip_reason, inbound.message_id)
+                logger.info("email=%s action=ignored reason=%s", inbound.message_id, skip_reason)
                 await self._acknowledge(inbound)
                 continue
             if await self._process_one(inbound):
                 processed += 1
+
+        self.health.record_success(processed)
+        logger.info(
+            "poll=ok fetched=%d processed=%d duration_ms=%d",
+            len(inbox),
+            processed,
+            int((time.monotonic() - started) * 1000),
+        )
         return processed
 
     async def _process_one(self, inbound) -> bool:
         db = self._session_factory()
+        started = time.monotonic()
         try:
-            await IntakeService(db).handle_inbound_email(inbound)
+            result = await IntakeService(db).handle_inbound_email(inbound)
         except Exception:
             db.rollback()
             # Deliberately NOT acknowledged: the email stays in the mailbox and
             # is retried on the next poll. Logged without the body, which can
             # contain personal data.
             logger.exception(
-                "Failed to process inbound email %s; left for retry", inbound.message_id
+                "email=%s action=failed - left in the mailbox for retry", inbound.message_id
             )
             return False
         finally:
             db.close()
 
+        # message_id is the correlation id across the whole pipeline: it
+        # appears here, in the idempotency skip, and on the stored message.
+        logger.info(
+            "email=%s action=processed conversation=%s ticket=%s duration_ms=%d",
+            inbound.message_id,
+            result.conversation.id if result else "-",
+            (result.ticket_reference if result else None) or "-",
+            int((time.monotonic() - started) * 1000),
+        )
         await self._acknowledge(inbound)
         return True
 
