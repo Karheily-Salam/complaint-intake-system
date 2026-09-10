@@ -1,0 +1,45 @@
+# Production deployment for the Timeweb Cloud VPS.
+#
+#   docker compose up -d --build
+#
+# Only the frontend (Nginx) is published, on host port 80. FastAPI is reachable
+# only on the internal compose network as "backend:8000".
+#
+# Requires ./backend/.env (copy from ./backend/.env.example and set the
+# production values - see the "Production (Docker)" block in that file).
+
+services:
+  backend:
+    build: ./backend
+    image: complaint-intake-backend:latest
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Persist the SQLite database (DATABASE_URL=sqlite:////app/data/complaint_intake.db).
+      - backend_data:/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    build: ./frontend
+    image: complaint-intake-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
+volumes:
+  backend_data:
