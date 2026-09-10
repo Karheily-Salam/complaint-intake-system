@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { api } from "@/api/client";
 import type { TicketDetail, TicketSummary } from "@/types/api";
 
-const STATUSES = ["new", "in_progress", "resolved", "closed"];
-
 export function EmployeeDashboard() {
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [selected, setSelected] = useState<TicketDetail | null>(null);
@@ -23,12 +21,6 @@ export function EmployeeDashboard() {
 
   async function open(reference: string) {
     setSelected(await api.getTicket(reference));
-  }
-
-  async function setStatus(reference: string, status: string) {
-    const updated = await api.updateTicketStatus(reference, status);
-    setSelected(updated);
-    void refresh();
   }
 
   return (
@@ -72,16 +64,11 @@ export function EmployeeDashboard() {
               {selected.reference} - {selected.title}
             </h3>
             <p>
-              {STATUSES.map((s) => (
-                <button
-                  key={s}
-                  className={`nav-btn ${selected.status === s ? "active" : ""}`}
-                  style={{ marginRight: 4 }}
-                  onClick={() => setStatus(selected.reference, s)}
-                >
-                  {s}
-                </button>
-              ))}
+              <span className="badge">{selected.status}</span>{" "}
+              <span className="muted-note">
+                Changing status is a staff action and requires an API key, so it is not
+                available in the public demo.
+              </span>
             </p>
 
             <h4 style={{ fontSize: "0.8rem" }}>Concise problem description</h4>

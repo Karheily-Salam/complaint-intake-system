@@ -34,7 +34,7 @@ def send(
     return resp.json()
 
 
-def _assert_reference_matches_the_real_ticket(client: TestClient, result: dict) -> None:
+def _assert_reference_matches_the_real_ticket(staff_client: TestClient, result: dict) -> None:
     reference = result["ticket_reference"]
     assert reference is not None
     assert reference.isdigit(), f"reference must be numeric-only, got {reference!r}"
@@ -42,11 +42,11 @@ def _assert_reference_matches_the_real_ticket(client: TestClient, result: dict) 
     assert reference in result["reply_body"]
     # And it must be the reference of the ticket actually persisted in the DB
     # - not a value the AI made up that merely looks like one.
-    ticket = client.get(f"/api/v1/tickets/{reference}").json()
+    ticket = staff_client.get(f"/api/v1/tickets/{reference}").json()
     assert ticket["reference"] == reference
 
 
-def test_english_confirmation_includes_the_real_ticket_reference(client):
+def test_english_confirmation_includes_the_real_ticket_reference(client, staff_client):
     addr = "ref-en@example.com"
     r1 = send(
         client,
@@ -62,10 +62,10 @@ def test_english_confirmation_includes_the_real_ticket_reference(client):
 
     assert r4["is_complete"] is True
     assert r4["conversation"]["language_code"] == "en"
-    _assert_reference_matches_the_real_ticket(client, r4)
+    _assert_reference_matches_the_real_ticket(staff_client, r4)
 
 
-def test_arabic_confirmation_includes_the_real_ticket_reference(client):
+def test_arabic_confirmation_includes_the_real_ticket_reference(client, staff_client):
     addr = "ref-ar@example.com"
     r1 = send(
         client,
@@ -95,10 +95,10 @@ def test_arabic_confirmation_includes_the_real_ticket_reference(client):
     assert r4["is_complete"] is True
     assert r4["conversation"]["language_code"] == "ar"
     assert "شكرًا" in r4["reply_body"]
-    _assert_reference_matches_the_real_ticket(client, r4)
+    _assert_reference_matches_the_real_ticket(staff_client, r4)
 
 
-def test_russian_confirmation_includes_the_real_ticket_reference(client):
+def test_russian_confirmation_includes_the_real_ticket_reference(client, staff_client):
     addr = "ref-ru@example.com"
     r1 = send(
         client,
@@ -116,10 +116,12 @@ def test_russian_confirmation_includes_the_real_ticket_reference(client):
     assert r4["is_complete"] is True
     assert r4["conversation"]["language_code"] == "ru"
     assert "Спасибо" in r4["reply_body"]
-    _assert_reference_matches_the_real_ticket(client, r4)
+    _assert_reference_matches_the_real_ticket(staff_client, r4)
 
 
-def test_two_tickets_in_the_same_test_get_distinct_references_both_correctly_shown(client):
+def test_two_tickets_in_the_same_test_get_distinct_references_both_correctly_shown(
+    client, staff_client
+):
     """Guards against the reference being hard-coded or stale/cached."""
     r_a = send(
         client,

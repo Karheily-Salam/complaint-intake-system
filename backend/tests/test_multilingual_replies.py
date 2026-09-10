@@ -143,7 +143,7 @@ def test_language_switches_to_latest_message_then_sticks_on_ambiguous_input(clie
 # --------------------------------------------------------- ticket creation still works
 
 
-def test_arabic_conversation_still_completes_and_creates_a_ticket(client):
+def test_arabic_conversation_still_completes_and_creates_a_ticket(client, staff_client):
     """Full non-English happy path: classification, extraction, validation and
     ticket creation are exactly the deterministic engine behaviour as before -
     only the reply's language changed. (The rule-based provider's field
@@ -181,5 +181,5 @@ def test_arabic_conversation_still_completes_and_creates_a_ticket(client):
     assert fields["account_email"] == "jane.doe@example.com"
     assert fields["withdrawal_transaction_id"] == "TXN-9f3a12bc"
 
-    ticket = client.get(f"/api/v1/tickets/{r2['ticket_reference']}").json()
+    ticket = staff_client.get(f"/api/v1/tickets/{r2['ticket_reference']}").json()
     assert ticket["structured_data"]["fields"]["user_id"] == "U-482913"

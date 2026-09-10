@@ -17,12 +17,14 @@ speculative complexity.
 
 from __future__ import annotations
 
+import asyncio
 import email
 import email.policy
 import html
 import imaplib
 import re
 import smtplib
+from collections import OrderedDict
 from email.message import EmailMessage
 from email.utils import make_msgid, parseaddr
 
@@ -30,6 +32,11 @@ from app.core.logging import get_logger
 from app.email.base import EmailProvider, InboundEmail, OutboundEmail, SentEmail
 
 logger = get_logger(__name__)
+
+# How many recently-fetched message-id -> UID pairs to keep. One poll cycle's
+# worth is all that is normally needed; the bound only matters for entries
+# that never get acknowledged.
+MAX_TRACKED_UIDS = 1000
 
 
 class ImapSmtpEmailProvider(EmailProvider):
@@ -52,6 +59,9 @@ class ImapSmtpEmailProvider(EmailProvider):
         smtp_use_tls: bool,
         smtp_from_addr: str,
         mail_domain: str,
+        imap_timeout: int = 30,
+        smtp_timeout: int = 30,
+        uid_cache_size: int = MAX_TRACKED_UIDS,
     ) -> None:
         self.imap_host = imap_host
         self.imap_port = imap_port
@@ -59,6 +69,7 @@ class ImapSmtpEmailProvider(EmailProvider):
         self.imap_password = imap_password
         self.imap_use_ssl = imap_use_ssl
         self.imap_mailbox = imap_mailbox
+        self.imap_timeout = imap_timeout
 
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
@@ -68,17 +79,43 @@ class ImapSmtpEmailProvider(EmailProvider):
         self.smtp_use_tls = smtp_use_tls
         self.smtp_from_addr = smtp_from_addr
         self.mail_domain = mail_domain
+        self.smtp_timeout = smtp_timeout
 
         # message_id -> IMAP UID, populated by fetch_new() and consumed by
         # mark_processed(). UIDs (not sequence numbers) are used throughout
         # because sequence numbers are only valid for the lifetime of a
         # single connection - fetch_new() and mark_processed() each open
         # their own.
-        self._uid_by_message_id: dict[str, bytes] = {}
+        #
+        # Bounded: this provider is a long-lived singleton, and an entry whose
+        # message never gets acknowledged (a permanent failure, say) would
+        # otherwise sit here for the life of the process. Oldest entries are
+        # evicted first; losing one only means the message is fetched again
+        # and recognised as already processed by the database.
+        self._uid_by_message_id: OrderedDict[str, bytes] = OrderedDict()
+        self._uid_cache_size = uid_cache_size
 
-    # ---- EmailProvider ----
+    # ---- EmailProvider (async surface) ----
+    #
+    # imaplib and smtplib are blocking, and everything calling these runs on
+    # the asyncio event loop - the poller, and the FastAPI app sharing that
+    # loop. Running them inline would stall every HTTP request for the
+    # duration of a mailbox round trip, and a blackholed connection would stop
+    # the whole application rather than just this poll. Each blocking body is
+    # therefore executed in a worker thread.
 
     async def fetch_new(self) -> list[InboundEmail]:
+        return await asyncio.to_thread(self._fetch_new_blocking)
+
+    async def mark_processed(self, message_id: str) -> None:
+        await asyncio.to_thread(self._mark_processed_blocking, message_id)
+
+    async def send(self, email_out: OutboundEmail) -> SentEmail:
+        return await asyncio.to_thread(self._send_blocking, email_out)
+
+    # ---- blocking implementations ----
+
+    def _fetch_new_blocking(self) -> list[InboundEmail]:
         conn = self._imap_connect()
         try:
             conn.select(self.imap_mailbox)
@@ -90,13 +127,19 @@ class ImapSmtpEmailProvider(EmailProvider):
             for uid in data[0].split():
                 parsed = self._fetch_one(conn, uid)
                 if parsed is not None:
-                    self._uid_by_message_id[parsed.message_id] = uid
+                    self._remember_uid(parsed.message_id, uid)
                     emails.append(parsed)
             return emails
         finally:
             self._imap_disconnect(conn)
 
-    async def mark_processed(self, message_id: str) -> None:
+    def _remember_uid(self, message_id: str, uid: bytes) -> None:
+        self._uid_by_message_id[message_id] = uid
+        self._uid_by_message_id.move_to_end(message_id)
+        while len(self._uid_by_message_id) > self._uid_cache_size:
+            self._uid_by_message_id.popitem(last=False)
+
+    def _mark_processed_blocking(self, message_id: str) -> None:
         uid = self._uid_by_message_id.pop(message_id, None)
         if uid is None:
             logger.warning("mark_processed called for unknown message_id (already handled?)")
@@ -108,7 +151,7 @@ class ImapSmtpEmailProvider(EmailProvider):
         finally:
             self._imap_disconnect(conn)
 
-    async def send(self, email_out: OutboundEmail) -> SentEmail:
+    def _send_blocking(self, email_out: OutboundEmail) -> SentEmail:
         msg = EmailMessage()
         sender = email_out.from_addr or self.smtp_from_addr
         msg["From"] = sender
@@ -149,10 +192,16 @@ class ImapSmtpEmailProvider(EmailProvider):
     # ---- connection helpers ----
 
     def _imap_connect(self) -> imaplib.IMAP4:
+        # An explicit timeout is essential, not tidiness: without one the
+        # socket blocks forever if the server accepts the connection and then
+        # never answers, which is exactly what a silently-dropping firewall
+        # produces. imaplib's default is no timeout at all.
         if self.imap_use_ssl:
-            conn: imaplib.IMAP4 = imaplib.IMAP4_SSL(self.imap_host, self.imap_port)
+            conn: imaplib.IMAP4 = imaplib.IMAP4_SSL(
+                self.imap_host, self.imap_port, timeout=self.imap_timeout
+            )
         else:
-            conn = imaplib.IMAP4(self.imap_host, self.imap_port)
+            conn = imaplib.IMAP4(self.imap_host, self.imap_port, timeout=self.imap_timeout)
             conn.starttls()
         conn.login(self.imap_username, self.imap_password)
         return conn
@@ -170,9 +219,11 @@ class ImapSmtpEmailProvider(EmailProvider):
 
     def _smtp_connect(self) -> smtplib.SMTP:
         if self.smtp_use_ssl:
-            server: smtplib.SMTP = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, timeout=30)
+            server: smtplib.SMTP = smtplib.SMTP_SSL(
+                self.smtp_host, self.smtp_port, timeout=self.smtp_timeout
+            )
         else:
-            server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30)
+            server = smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=self.smtp_timeout)
             if self.smtp_use_tls:
                 server.starttls()
         server.login(self.smtp_username, self.smtp_password)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base, TimestampMixin
@@ -22,6 +22,15 @@ class Conversation(Base, TimestampMixin):
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True, nullable=False)
 
     channel: Mapped[str] = mapped_column(String(30), default="email", nullable=False)
+    # True when this conversation was created through the public demo endpoint
+    # (`POST /inbox`) rather than by a real inbound email. It is the boundary
+    # between the synthetic data anyone may read and the real customer data
+    # that requires the staff API key: the public endpoints filter on it in
+    # the query, so a real conversation is not merely hidden from the UI - it
+    # is unreachable without authenticating.
+    is_demo: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, index=True
+    )
     subject: Mapped[str | None] = mapped_column(String(300), nullable=True)
     # Opaque public reference for this thread, embedded in the subject line of
     # every outbound email ("[Ref:AB12CD34]"). Threading is primarily done via

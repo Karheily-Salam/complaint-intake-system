@@ -53,10 +53,11 @@ class EmailPoller:
         and neither are failures, which stay in the mailbox for the next poll.
         """
         try:
-            inbox = await self.provider.fetch_new()
+            inbox = await self._with_timeout(self.provider.fetch_new(), "fetch")
         except Exception:
-            # Network/auth failure: nothing was consumed, so simply try again
-            # next interval. The message (not the credentials) is logged.
+            # Network/auth failure, or a provider that hung past the ceiling:
+            # nothing was consumed, so simply try again next interval. The
+            # error is logged (never the credentials) rather than swallowed.
             logger.exception("Failed to fetch new email; will retry next poll")
             return 0
 
@@ -93,9 +94,26 @@ class EmailPoller:
         await self._acknowledge(inbound)
         return True
 
+    async def _with_timeout(self, awaitable, what: str):
+        """Cap any single provider operation.
+
+        The IMAP/SMTP providers set their own socket timeouts, which is the
+        real fix; this is the outer guarantee that one poll cycle cannot run
+        forever even if a provider fails to honour its own - the poller must
+        always come back round to try again.
+        """
+        ceiling = max(5, settings.email_operation_timeout_seconds)
+        try:
+            return await asyncio.wait_for(awaitable, timeout=ceiling)
+        except TimeoutError:
+            logger.error("Email provider '%s' exceeded %ss; abandoning this cycle", what, ceiling)
+            raise
+
     async def _acknowledge(self, inbound) -> None:
         try:
-            await self.provider.mark_processed(inbound.message_id)
+            await self._with_timeout(
+                self.provider.mark_processed(inbound.message_id), "acknowledge"
+            )
         except Exception:
             # The turn is safely committed; failing to flag the message only
             # means it may be fetched again, which the idempotency check

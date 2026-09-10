@@ -190,6 +190,15 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
             </p>
           </div>
           <div>
+            <h3>Data separation</h3>
+            <p>
+              Real complaints require an API key. This demo reads only synthetic
+              conversations, filtered in the database query rather than hidden by the UI —
+              so what you type here is sandboxed, and real customer data is unreachable
+              from it.
+            </p>
+          </div>
+          <div>
             <h3>Localisation</h3>
             <p>
               Replies follow the language of the customer’s latest message — English,
@@ -250,8 +259,9 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
               SQLite on a persistent volume, UFW-firewalled VPS
             </li>
             <li>
-              <strong>Tests</strong> — 148 automated tests covering the conversation
-              lifecycle, threading, idempotency, retry behaviour, and security boundaries
+              <strong>Tests</strong> — 190 automated tests covering the conversation
+              lifecycle, threading, idempotency, retry behaviour, authentication, and
+              security boundaries
             </li>
           </ul>
           {emailProvider && (

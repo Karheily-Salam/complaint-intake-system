@@ -88,7 +88,7 @@ backend/
     api/              FastAPI routes
   alembic/            migrations (the only schema-authoring mechanism)
   scripts/            check_email.py — mailbox pre-flight
-  tests/              148 tests
+  tests/              190 tests
 frontend/             React + TypeScript SPA (overview, demo, support dashboard)
 ops/scripts/          backup + health-check scripts used on the server
 ```
@@ -183,6 +183,46 @@ transaction commits. A provider failure rolls back and the email is retried on
 the next poll, so the system never ends up with a conversation advanced but the
 customer never asked. One bad message never blocks the rest of the batch.
 
+### Not blocking, and not hanging
+
+`imaplib` and `smtplib` are blocking, and the poller shares its event loop with
+the HTTP API, so every provider call runs in a worker thread
+(`asyncio.to_thread`). Without that, one slow mailbox round trip would stall
+every in-flight request in the process.
+
+Timeouts matter just as much: a connection that is accepted and then silently
+dropped — what a blackholing firewall produces — blocks a socket with no
+timeout **forever**, and `restart: unless-stopped` does not restart a
+hung-but-alive container. IMAP and SMTP both get explicit socket timeouts, and
+the poller applies an outer ceiling to any single provider call in case a
+provider ignores its own. A failing cycle is logged and retried on the next
+interval rather than ending the poller.
+
+### A completed thread stays quiet
+
+People reply to finished threads — "thanks", a question, occasionally a
+corrected value. Only the last deserves another email. After a ticket exists,
+a further reply produces a new confirmation *only if the engine actually
+changed a collected field* that turn — a persisted, deterministic signal, not
+a guess from the message text. Support is notified exactly once, when the
+ticket is created.
+
+### SQLite operational settings
+
+WAL (so a write does not block readers — this process has both an API and a
+poller writing), a 30s busy timeout instead of failing instantly on a held
+lock, and `foreign_keys=ON`, which SQLite otherwise ignores, leaving the
+migrations' constraints decorative. `synchronous` is left at its durable
+default: a handful of rows per email is not worth trading durability for
+throughput.
+
+### Rate limiting
+
+`POST /inbox` is the one public write endpoint, so Nginx limits it to 12
+requests/minute per IP with a burst of 6 — enough for a visitor to work
+through a multi-message complaint, not enough to be worth abusing. Exceeded
+requests get `429`.
+
 ### Mail-loop protection
 
 An automatic responder that answers automatic mail is a runaway loop. Auto-replies
@@ -199,8 +239,39 @@ carries no reliable signal (a bare transaction ID, say), the thread's known
 language is kept rather than guessed at. Language is detected and phrased by
 the AI layer — but *which* field is asked for is still the engine's decision.
 
+## Two API surfaces: public demo vs. staff
+
+Real complaints contain personal data — the customer's address, their account
+identifiers, the full text of what they wrote. That is separated from the
+public demo in the **database query**, not in the UI:
+
+| | Public (no credential) | Staff (`X-API-Key`) |
+|---|---|---|
+| Endpoints | `POST /inbox`, `GET /demo/tickets`, `GET /demo/conversations/{id}` | `GET/PATCH /tickets`, `GET /conversations` |
+| Data | only conversations flagged `is_demo` — created by whoever is trying the demo | everything, including real inbound email |
+| Mutation | none | ticket status |
+
+Conversations created through the demo endpoint are flagged `is_demo`; real
+inbound email never is. Every public read filters on that flag in SQL, so a
+real conversation cannot be *loaded* through the public API whatever id or
+reference is supplied — and the demo intake endpoint refuses to continue a
+non-demo thread, so claiming someone's address and guessing an id reaches
+nothing. Real email will likewise never thread onto a demo conversation.
+
+The browser app deliberately holds no API key: a key shipped inside a
+JavaScript bundle is not a secret, so the dashboard reads demo data and shows
+ticket status read-only. `STAFF_API_KEY` has no default and no fallback — if
+it is unset the staff endpoints return `503`, because a misconfigured
+deployment must fail closed rather than serve PII. Keys are compared with
+`secrets.compare_digest` and never logged.
+
+**Note on the demo:** anything typed into it is stored and publicly visible by
+design. It is a sandbox, not a place for real data.
+
 ## Security considerations
 
+- **Authentication on everything that exposes or mutates real data** — see the
+  two-surface table above. Fails closed when unconfigured.
 - **No secrets in the repository or image.** Credentials come only from
   environment variables via a git-ignored `backend/.env` (mode `600` on the
   server). Startup fails fast naming any missing variable — never its value.
@@ -285,7 +356,7 @@ path, including error paths. Full procedure: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe -m pytest      # 148 tests
+../.venv/Scripts/python.exe -m pytest      # 190 tests
 ../.venv/Scripts/python.exe -m ruff check .
 ```
 
@@ -327,6 +398,25 @@ live database).
 See [DEPLOYMENT.md](DEPLOYMENT.md) for build/deploy/rollback and
 [SERVER.md](SERVER.md) for the host itself (firewall, SSH model, backups,
 monitoring, multi-project layout).
+
+### Honest limits
+
+This is a **single-node** deployment and the design leans on that:
+
+- **SQLite** suits one process with modest write volume. It is not a fit for
+  multiple application servers; PostgreSQL is the swap, and SQLAlchemy plus
+  Alembic is most of the work already done.
+- **One worker.** Concurrency safety here comes from everything serialising on
+  one event loop, with idempotency and a unique index as the backstop. Running
+  a second worker would need the poller moved out of the web process (its own
+  container, or a lock) so two pollers do not fetch the same mailbox.
+- **Polling, not push.** A ~60s interval is fine for complaint intake and
+  needs no public webhook endpoint. Sub-second delivery would mean IMAP IDLE
+  or a webhook provider — a different trade, not an upgrade.
+- **Mock email in production today.** The IMAP/SMTP integration is complete
+  and tested but not attached to a live mailbox yet.
+- **No HTTPS yet** — no domain is pointed at the host. Until then the demo is
+  plain HTTP, which is another reason the public surface carries no real data.
 
 ## Using a local LLM
 

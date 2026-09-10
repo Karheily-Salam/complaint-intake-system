@@ -12,8 +12,8 @@ class ConversationService:
     def __init__(self, db: Session) -> None:
         self.conversations = ConversationRepository(db)
 
-    def get(self, conversation_id: int) -> Conversation | None:
-        return self.conversations.get(conversation_id)
+    def get(self, conversation_id: int, *, demo_only: bool = False) -> Conversation | None:
+        return self.conversations.get(conversation_id, demo_only=demo_only)
 
-    def list_recent(self, limit: int = 50) -> list[Conversation]:
-        return self.conversations.list_recent(limit=limit)
+    def list_recent(self, limit: int = 50, *, demo_only: bool = False) -> list[Conversation]:
+        return self.conversations.list_recent(limit=limit, demo_only=demo_only)

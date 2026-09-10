@@ -308,7 +308,7 @@ def test_deposit_invalid_email_then_correction(client):
 # --------------------------------------------------------------------------- other
 
 
-def test_other_clear_complaint_creates_ticket_with_summary(client):
+def test_other_clear_complaint_creates_ticket_with_summary(client, staff_client):
     result = send(
         client,
         "Your mobile app keeps logging me out every few minutes and I cannot see my "
@@ -318,7 +318,7 @@ def test_other_clear_complaint_creates_ticket_with_summary(client):
     assert result["is_complete"] is True
     assert result["ticket_reference"] is not None
 
-    ticket = client.get(f"/api/v1/tickets/{result['ticket_reference']}").json()
+    ticket = staff_client.get(f"/api/v1/tickets/{result['ticket_reference']}").json()
     assert len(ticket["concise_description"]) > 10
     assert ticket["structured_data"]["fields"]["problem_description"]
 
@@ -353,7 +353,7 @@ def test_ambiguous_first_message_then_classified_later(client):
 # --------------------------------------------------------------------------- transcript
 
 
-def test_full_transcript_is_preserved(client):
+def test_full_transcript_is_preserved(client, staff_client):
     addr = "transcript@example.com"
     r1 = send(client, "Withdrawal failed.", from_addr=addr, subject="ticket please")
     cid = r1["conversation"]["id"]
@@ -366,7 +366,7 @@ def test_full_transcript_is_preserved(client):
         from_addr=addr,
     )
 
-    convo = client.get(f"/api/v1/conversations/{cid}").json()
+    convo = staff_client.get(f"/api/v1/conversations/{cid}").json()
     directions = [m["direction"] for m in convo["messages"]]
     inbound = [m for m in convo["messages"] if m["direction"] == "inbound"]
     assert len(inbound) == 4

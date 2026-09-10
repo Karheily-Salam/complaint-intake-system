@@ -13,7 +13,7 @@ def test_schemas_endpoint(client):
     assert types == {"withdrawal", "deposit", "other"}
 
 
-def test_withdrawal_intake_flow(client):
+def test_withdrawal_intake_flow(client, staff_client):
     # First message: unstructured, partial info.
     r1 = client.post(
         "/api/v1/inbox",
@@ -53,5 +53,5 @@ def test_withdrawal_intake_flow(client):
     assert result2["ticket_reference"] is not None
 
     # Ticket shows up on the dashboard endpoint.
-    tickets = client.get("/api/v1/tickets").json()
+    tickets = staff_client.get("/api/v1/tickets").json()
     assert any(t["reference"] == result2["ticket_reference"] for t in tickets)

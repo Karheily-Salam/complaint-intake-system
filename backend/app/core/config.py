@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     # whatever the (unreliable) detection guessed for this message.
     min_language_confidence: float = 0.5
 
+    # ---- Staff API authentication ----
+    # Shared secret for the endpoints that expose real customer data
+    # (tickets, conversations) and mutate real tickets. Supplied via
+    # STAFF_API_KEY; there is deliberately no default, and the staff endpoints
+    # fail closed (503) when it is unset rather than serving PII openly.
+    staff_api_key: str | None = None
+
     # ---- Email provider ----
     email_provider: str = "mock"  # mock | imap_smtp
     # Where completed tickets are sent (the support/admin team's own inbox).
@@ -80,6 +87,13 @@ class Settings(BaseSettings):
     imap_mailbox: str = "INBOX"
     # How often the background poller checks the mailbox.
     email_poll_interval_seconds: int = 60
+    # Socket timeout for IMAP. Without one, a connection that is accepted but
+    # then blackholed (exactly what a silently-dropping firewall produces)
+    # hangs the poller forever.
+    imap_timeout_seconds: int = 30
+    # Belt-and-braces ceiling applied by the poller around any provider call,
+    # in case a provider ignores its own socket timeout.
+    email_operation_timeout_seconds: int = 120
 
     # ---- Outbound email (SMTP, EMAIL_PROVIDER=imap_smtp) ----
     smtp_host: str | None = None
@@ -90,6 +104,7 @@ class Settings(BaseSettings):
     # smtp_use_tls=true  -> STARTTLS after connecting (typically port 587)
     smtp_use_ssl: bool = False
     smtp_use_tls: bool = True
+    smtp_timeout_seconds: int = 30
     # Defaults to the polled mailbox when unset (see smtp_sender).
     smtp_from_addr: str | None = None
 

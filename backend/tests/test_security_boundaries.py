@@ -96,11 +96,11 @@ def test_ticket_references_stay_sequential_and_numeric_despite_injection(client)
 
 
 @pytest.mark.parametrize("endpoint", ["/api/v1/tickets", "/api/v1/conversations"])
-def test_listing_limits_are_bounded(client, endpoint):
-    """An unbounded limit would let one public request pull the whole table."""
-    assert client.get(f"{endpoint}?limit=100000").status_code == 422
-    assert client.get(f"{endpoint}?limit=0").status_code == 422
-    assert client.get(f"{endpoint}?limit=10").status_code == 200
+def test_listing_limits_are_bounded(staff_client, endpoint):
+    """An unbounded limit would let one request pull the whole table."""
+    assert staff_client.get(f"{endpoint}?limit=100000").status_code == 422
+    assert staff_client.get(f"{endpoint}?limit=0").status_code == 422
+    assert staff_client.get(f"{endpoint}?limit=10").status_code == 200
 
 
 def test_oversized_inbound_body_is_rejected_not_stored(client):
@@ -113,12 +113,12 @@ def test_oversized_inbound_body_is_rejected_not_stored(client):
     assert resp.status_code == 422
 
 
-def test_unknown_ticket_and_conversation_return_404_not_500(client):
-    assert client.get("/api/v1/tickets/does-not-exist").status_code == 404
-    assert client.get("/api/v1/conversations/999999").status_code == 404
+def test_unknown_ticket_and_conversation_return_404_not_500(staff_client):
+    assert staff_client.get("/api/v1/tickets/does-not-exist").status_code == 404
+    assert staff_client.get("/api/v1/conversations/999999").status_code == 404
 
 
-def test_invalid_ticket_status_is_rejected(client):
+def test_invalid_ticket_status_is_rejected(client, staff_client):
     result = client.post(
         "/api/v1/inbox",
         json={
@@ -133,7 +133,7 @@ def test_invalid_ticket_status_is_rejected(client):
     reference = result["ticket_reference"]
     assert reference is not None
 
-    bad = client.patch(f"/api/v1/tickets/{reference}", json={"status": "nonsense"})
+    bad = staff_client.patch(f"/api/v1/tickets/{reference}", json={"status": "nonsense"})
     assert bad.status_code == 422
-    good = client.patch(f"/api/v1/tickets/{reference}", json={"status": "resolved"})
+    good = staff_client.patch(f"/api/v1/tickets/{reference}", json={"status": "resolved"})
     assert good.status_code == 200

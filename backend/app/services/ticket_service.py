@@ -89,11 +89,11 @@ class TicketService:
 
     # ---- dashboard reads ----
 
-    def list_tickets(self, limit: int = 100) -> list[Ticket]:
-        return self.tickets.list(limit=limit)
+    def list_tickets(self, limit: int = 100, *, demo_only: bool = False) -> list[Ticket]:
+        return self.tickets.list(limit=limit, demo_only=demo_only)
 
-    def get_ticket(self, reference: str) -> Ticket | None:
-        return self.tickets.get_by_reference(reference)
+    def get_ticket(self, reference: str, *, demo_only: bool = False) -> Ticket | None:
+        return self.tickets.get_by_reference(reference, demo_only=demo_only)
 
     def update_status(self, reference: str, status: str) -> Ticket | None:
         ticket = self.tickets.get_by_reference(reference)

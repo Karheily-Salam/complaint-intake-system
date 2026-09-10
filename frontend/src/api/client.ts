@@ -38,13 +38,14 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  getConversation: (id: number) => request<ConversationOut>(`/conversations/${id}`),
+  // These are the public demo endpoints. The server restricts them to
+  // conversations flagged as demo, so this app cannot reach real customer
+  // data. The staff endpoints (/tickets, /conversations) require an API key,
+  // which this browser app deliberately does not hold: a key shipped inside a
+  // JavaScript bundle is not a secret, and pretending otherwise would be a
+  // fake boundary.
+  getConversation: (id: number) => request<ConversationOut>(`/demo/conversations/${id}`),
 
-  listTickets: () => request<TicketSummary[]>("/tickets"),
-  getTicket: (reference: string) => request<TicketDetail>(`/tickets/${reference}`),
-  updateTicketStatus: (reference: string, status: string) =>
-    request<TicketDetail>(`/tickets/${reference}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    }),
+  listTickets: () => request<TicketSummary[]>("/demo/tickets"),
+  getTicket: (reference: string) => request<TicketDetail>(`/demo/tickets/${reference}`),
 };

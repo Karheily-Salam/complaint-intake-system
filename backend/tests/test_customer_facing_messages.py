@@ -295,7 +295,7 @@ def test_i_final_russian_confirmation_shows_collected_info_and_numeric_reference
 # ------------------------------------------------------------------------- J
 
 
-def test_j_reference_is_numeric_persisted_and_never_invented_by_ai(client):
+def test_j_reference_is_numeric_persisted_and_never_invented_by_ai(client, staff_client):
     addr = "j-reference-integrity@example.com"
     r1 = send(
         client,
@@ -312,11 +312,11 @@ def test_j_reference_is_numeric_persisted_and_never_invented_by_ai(client):
     # The exact same reference is returned by the dashboard/API lookup - the
     # AI only ever phrases a reference the service already generated and
     # persisted; it never invents or alters it.
-    ticket = client.get(f"/api/v1/tickets/{ref}").json()
+    ticket = staff_client.get(f"/api/v1/tickets/{ref}").json()
     assert ticket["reference"] == ref
     assert ref in r1["reply_body"]
 
-    tickets = client.get("/api/v1/tickets").json()
+    tickets = staff_client.get("/api/v1/tickets").json()
     assert any(t["reference"] == ref for t in tickets)
 
 

@@ -65,13 +65,20 @@ class IntakeService:
     # ------------------------------------------------------------------ entry points
 
     async def handle_inbound(self, payload: InboundEmailIn) -> IntakeResult:
-        """Local development path (``POST /inbox``) - no real mailbox involved."""
+        """Public demo path (``POST /inbox``) - no real mailbox involved.
+
+        This endpoint is unauthenticated, and the sender address it is given is
+        unverified, so it is confined to demo conversations: it can only create
+        them and only continue them. A real (email-originated) conversation is
+        excluded by the query, so claiming a victim's address and guessing a
+        conversation id cannot reach their data.
+        """
         # Customer identity is the inbound email address only - never reconciled
         # against user_id or other values from the message body.
         customer = self.customers.get_or_create(payload.from_addr, payload.customer_name)
 
         if payload.conversation_id:
-            conversation = self.conversations.get(payload.conversation_id)
+            conversation = self.conversations.get(payload.conversation_id, demo_only=True)
             if conversation is None:
                 raise ValueError(f"Conversation {payload.conversation_id} not found")
             if conversation.customer_id != customer.id:
@@ -80,6 +87,7 @@ class IntakeService:
             conversation = self.conversations.create(
                 customer_id=customer.id,
                 subject=payload.subject or "Customer complaint",
+                is_demo=True,
             )
 
         inbound_msg = self.conversations.add_message(
@@ -252,6 +260,22 @@ class IntakeService:
             ticket = ticket_service.refresh_snapshot(complaint.ticket, complaint)
         conversation.status = ConversationStatus.COMPLETED
 
+        # A completed thread stays open to the customer, and people reply to
+        # it - "thanks", an out-of-band question, a corrected value. Only the
+        # last of those is worth another confirmation. The test is whether the
+        # engine actually changed any collected field this turn (a persisted,
+        # deterministic signal from extraction + validation), never how many
+        # messages exist or what the text looked like: restating the same
+        # value or thanking us changes nothing and warrants no email.
+        if not is_new and not any(field.changed for field in outcome.fields):
+            logger.info(
+                "Conversation %s already ticketed (%s) and this reply changed no "
+                "collected data - not resending the confirmation",
+                conversation.id,
+                ticket.reference,
+            )
+            return None, ticket, False
+
         # Only now does the real reference exist, so the confirmation is
         # composed here rather than inside ConversationEngine.advance.
         reply = await self.engine.compose_ticket_confirmation(
@@ -281,18 +305,32 @@ class IntakeService:
             if message is None:
                 continue
             conversation = self.conversations.get(message.conversation_id)
-            if conversation is not None and conversation.customer_id == customer.id:
-                return conversation
+            if self._is_threadable(conversation, customer):
+                return conversation  # type: ignore[return-value]
 
         token_match = _SUBJECT_REF_RE.search(inbound.subject or "")
         if token_match:
             conversation = self.conversations.get_by_thread_token(token_match.group(1).lower())
-            if conversation is not None and conversation.customer_id == customer.id:
-                return conversation
+            if self._is_threadable(conversation, customer):
+                return conversation  # type: ignore[return-value]
 
         return self.conversations.create(
             customer_id=customer.id,
             subject=inbound.subject or "Customer complaint",
+        )
+
+    @staticmethod
+    def _is_threadable(conversation: Conversation | None, customer: Customer) -> bool:
+        """Whether real inbound mail may continue this conversation.
+
+        Real email never joins a demo conversation, even if a crafted header
+        or subject token points at one - the two data sets stay separate in
+        both directions.
+        """
+        return (
+            conversation is not None
+            and conversation.customer_id == customer.id
+            and not conversation.is_demo
         )
 
     @staticmethod
