@@ -452,3 +452,49 @@ code {
   .intake-hero h2 { font-size: 1.5rem; }
   .demo-invite { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- collapsible "About this project" ---------- */
+.about {
+  margin-top: 2.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+.about > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;            /* hide the native marker; we draw our own */
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 1.05rem;
+  font-weight: 600;
+  user-select: none;
+}
+.about > summary::-webkit-details-marker { display: none; }
+.about > summary:hover { border-color: var(--accent); }
+.about > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.about-chevron {
+  display: inline-block;
+  transition: transform 120ms ease;
+  color: var(--accent);
+}
+.about[open] > summary .about-chevron { transform: rotate(90deg); }
+.about-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 1.25rem;
+}
+.about-body .about-header { padding-top: 0; }
