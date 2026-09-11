@@ -37,13 +37,18 @@ from app.domain.enums import (
     FieldSource,
     FieldStatus,
     MessageDirection,
+    TicketStatus,
 )
 from app.email.base import InboundEmail, OutboundEmail
 from app.email.factory import get_email_provider
 from app.repositories.conversation_repo import ConversationRepository
 from app.repositories.customer_repo import CustomerRepository
 from app.schemas.conversation import InboundEmailIn, IntakeResult
-from app.services.email_threading import SUBJECT_REF_RE, thread_subject
+from app.services.email_threading import (
+    SUBJECT_REF_RE,
+    subject_without_thread_token,
+    thread_subject,
+)
 from app.services.ticket_service import TicketService
 
 logger = get_logger(__name__)
@@ -300,6 +305,10 @@ class IntakeService:
 
         The sender's address is deliberately never used on its own to pick a
         conversation: one customer may have several complaints open at once.
+
+        Whatever a signal resolves to is still subject to _is_threadable, so a
+        match that is not allowed to be continued falls through to a brand-new
+        conversation at the bottom of this method.
         """
         candidates = [inbound.in_reply_to, *reversed(inbound.references)]
         for external_id in candidates:
@@ -318,24 +327,50 @@ class IntakeService:
             if self._is_threadable(conversation, customer):
                 return conversation  # type: ignore[return-value]
 
+        # The customer keeps their identity; only the thread is new. Any
+        # inherited [Ref:...] token is stripped so this conversation gets its
+        # own - see subject_without_thread_token.
         return self.conversations.create(
             customer_id=customer.id,
-            subject=inbound.subject or "Customer complaint",
+            subject=subject_without_thread_token(inbound.subject),
         )
 
     @staticmethod
     def _is_threadable(conversation: Conversation | None, customer: Customer) -> bool:
         """Whether real inbound mail may continue this conversation.
 
+        Applied to whatever the threading signals resolved to, so every rule
+        here holds however the match was made - In-Reply-To, the References
+        chain, or the subject token. That is deliberate: the lifecycle state
+        outranks the email metadata, rather than each call site having to
+        remember to check.
+
         Real email never joins a demo conversation, even if a crafted header
         or subject token points at one - the two data sets stay separate in
         both directions.
+
+        A conversation whose ticket support has closed is never continued
+        either. Closing a ticket ends that matter, so a later email is a new
+        matter even when the customer simply replied to the old thread.
+        Returning False sends _resolve_conversation on to create a fresh
+        conversation, which gets its own history and its own ticket reference,
+        while the closed ticket and its history are left untouched.
         """
-        return (
-            conversation is not None
-            and conversation.customer_id == customer.id
-            and not conversation.is_demo
-        )
+        if conversation is None or conversation.customer_id != customer.id:
+            return False
+        if conversation.is_demo:
+            return False
+
+        ticket = conversation.ticket
+        if ticket is not None and ticket.status == TicketStatus.CLOSED:
+            logger.info(
+                "Inbound email threaded to conversation %s, whose ticket %s is closed - "
+                "starting a new ticket instead of reopening it",
+                conversation.id,
+                ticket.reference,
+            )
+            return False
+        return True
 
     @staticmethod
     def _thread_subject(conversation: Conversation) -> str:

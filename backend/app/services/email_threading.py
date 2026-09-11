@@ -33,6 +33,20 @@ def thread_subject(conversation: Conversation, base: str | None = None) -> str:
     return subject
 
 
+def subject_without_thread_token(subject: str | None) -> str:
+    """A subject safe to store on a brand-new conversation.
+
+    A reply carries the previous thread's ``[Ref:...]`` token. Storing that
+    verbatim on a new conversation would be quietly wrong: thread_subject()
+    treats an already-tagged subject as tagged, so the new conversation would
+    send its mail under the *old* conversation's token, and the customer's next
+    reply would resolve back to that old thread instead of this one.
+    """
+    cleaned = SUBJECT_REF_RE.sub(" ", subject or "")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned or "Customer complaint"
+
+
 def reply_to_message(conversation: Conversation) -> Message | None:
     """The message a new reply should point ``In-Reply-To`` at.
 
