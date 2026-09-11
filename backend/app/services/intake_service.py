@@ -41,6 +41,7 @@ from app.domain.enums import (
 )
 from app.email.base import InboundEmail, OutboundEmail
 from app.email.factory import get_email_provider
+from app.email.quoting import strip_quoted_reply
 from app.repositories.conversation_repo import ConversationRepository
 from app.repositories.customer_repo import CustomerRepository
 from app.schemas.conversation import InboundEmailIn, IntakeResult
@@ -217,16 +218,25 @@ class IntakeService:
         body: str,
         source_message_id: int,
     ):
-        """Run the engine for one message and persist everything it decided."""
+        """Run the engine for one message and persist everything it decided.
+
+        The engine and the AI layer see the message with quoted reply history
+        removed; the raw body stays exactly as received in the message row for
+        audit and for the dashboard's conversation view. Cleaning here rather
+        than at storage time is deliberate: one choke point, and nothing that
+        has already been persisted is ever rewritten.
+        """
         state = ConversationState(
-            latest_message=body,
+            latest_message=strip_quoted_reply(body),
             complaint_type=complaint.type,
             collected=[
                 CollectedField(key=f.key, value=f.value, status=_status(f.status))
                 for f in complaint.fields
             ],
             customer_name=customer.name,
-            inbound_transcript=self.conversations.inbound_bodies(conversation),
+            inbound_transcript=[
+                strip_quoted_reply(b) for b in self.conversations.inbound_bodies(conversation)
+            ],
             language_code=conversation.language_code,
             pending_field=conversation.pending_field,
         )

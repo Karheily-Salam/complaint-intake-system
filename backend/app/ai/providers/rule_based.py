@@ -181,18 +181,56 @@ _MONTH_NAMES: dict[str, int] = {
 _DATE_WORD_RE = re.compile(r"[^\s,،.]+")
 
 
+_YEAR_TOKEN_RE = re.compile(r"^(?:19|20)\d{2}$")
+
+
 def _parse_natural_date(message: str) -> str | None:
+    """Resolve a written date like "8 September" / "8 сентября" / "8 سبتمبر".
+
+    Three rules keep this from inventing data, each one a production defect
+    that actually occurred or was one step away:
+
+    * a day must be a one- or two-digit token, so a long number that happens
+      to sit beside a month name (a phone number, a transaction id) can never
+      be read as a day;
+    * an explicitly written four-digit year is used. Assuming the current year
+      when the customer wrote "Sep 11, 2024" silently stored the wrong date;
+    * the result must be a real calendar date, so "31 February" is rejected
+      here rather than becoming a valid-looking value downstream.
+
+    The current year is still assumed for the bare "8 September" phrasing the
+    schema's extraction_hint invites - but only when no year is stated.
+    """
     words = _DATE_WORD_RE.findall(message)
     for i, word in enumerate(words):
         month = _MONTH_NAMES.get(word.strip(".,،").lower())
         if month is None:
             continue
-        for j in (i - 1, i + 1):
-            if 0 <= j < len(words):
-                digits = re.sub(r"\D", "", words[j])
-                if digits and 1 <= int(digits) <= 31:
-                    year = date.today().year
-                    return f"{year:04d}-{month:02d}-{int(digits):02d}"
+
+        day: int | None = None
+        year: int | None = None
+        # Only the immediate neighbourhood of the month name: "11 Sep 2026"
+        # and "Sep 11, 2026" both fit, while a number further down the message
+        # is not silently adopted.
+        for j in (i - 2, i - 1, i + 1, i + 2):
+            if not (0 <= j < len(words)):
+                continue
+            digits = re.sub(r"\D", "", words[j])
+            if not digits:
+                continue
+            if _YEAR_TOKEN_RE.match(digits):
+                if year is None:
+                    year = int(digits)
+            elif day is None and len(digits) <= 2 and 1 <= int(digits) <= 31:
+                day = int(digits)
+
+        if day is None:
+            continue
+        try:
+            resolved = date(year if year is not None else date.today().year, month, day)
+        except ValueError:
+            continue  # e.g. 31 February - not a date, so not a value
+        return resolved.strftime("%Y-%m-%d")
     return None
 
 # ---- language detection --------------------------------------------------
