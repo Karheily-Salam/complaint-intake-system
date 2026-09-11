@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](README.ru.md)
+
 # Complaint Intake System
 
 [![CI](https://github.com/Karheily-Salam/complaint-intake-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Karheily-Salam/complaint-intake-system/actions/workflows/ci.yml)
@@ -47,7 +49,8 @@ email provider by default.
   [Security](#security-considerations) · [Email integration](#email-integration)
 - [Support dashboard](#support-dashboard) · [Testing](#testing) · [Production deployment](#production-deployment) ·
   [Honest limits](#honest-limits)
-- [Architecture decisions (ADRs)](docs/adr/) ·
+- [Architecture reference](docs/architecture.md) ·
+  [Architecture decisions (ADRs)](docs/adr/) ·
   [Backup & restore drill](docs/operations/backup-restore.md) ·
   [Deployment](DEPLOYMENT.md) · [Server notes](SERVER.md)
 
@@ -135,7 +138,7 @@ backend/
     api/              FastAPI routes
   alembic/            migrations (the only schema-authoring mechanism)
   scripts/            check_email.py (mailbox pre-flight), seed_demo.py
-  tests/              258 tests
+  tests/              294 tests
 frontend/             React + TypeScript SPA (overview, mail-client demo, support inbox)
 ops/scripts/          backup + health-check scripts used on the server
 docs/adr/             architecture decision records
@@ -287,6 +290,17 @@ a further reply produces a new confirmation *only if the engine actually
 changed a collected field* that turn — a persisted, deterministic signal, not
 a guess from the message text. Support is notified exactly once, when the
 ticket is created.
+
+### A closed ticket stays closed
+
+Closing a ticket ends that matter. A later email from the same customer starts
+a **new** ticket with its own conversation and its own reference — even when it
+is a reply to the old thread carrying `In-Reply-To`, the `References` chain, or
+the subject token. The lifecycle state deliberately outranks the email
+metadata, and the check sits at the single point where a thread is matched, so
+it holds however the match was made. The closed ticket and its history are
+never appended to or reopened. The customer is not duplicated: identity is
+reused across all of their tickets.
 
 ### SQLite operational settings
 
@@ -477,7 +491,7 @@ path, including error paths. Full procedure: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe -m pytest      # 258 tests
+../.venv/Scripts/python.exe -m pytest      # 294 tests
 ../.venv/Scripts/python.exe -m ruff check .
 ```
 

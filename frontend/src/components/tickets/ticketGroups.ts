@@ -7,6 +7,7 @@
  * That common part lives here.
  */
 
+import type { Translation } from "@/i18n/en";
 import type { ComplaintSchema, TicketSummary } from "@/types/api";
 
 /**
@@ -21,18 +22,12 @@ import type { ComplaintSchema, TicketSummary } from "@/types/api";
 export const GROUP_ORDER = ["deposit", "withdrawal", "other"];
 
 /**
- * Plural, scannable headings. Which groups *exist* still comes from the schema
- * registry; an unlisted type falls back to its own schema label, so a new
- * complaint type appears without a frontend change.
+ * Plural, scannable headings, from the active language. Which groups *exist*
+ * still comes from the schema registry; an unlisted type falls back to its own
+ * registry label, so a new complaint type appears without a frontend change.
  */
-const GROUP_TITLES: Record<string, string> = {
-  deposit: "Deposits",
-  withdrawal: "Withdrawals",
-  other: "Other",
-};
-
-export function groupTitle(schema: ComplaintSchema): string {
-  return GROUP_TITLES[schema.type] ?? schema.label;
+export function groupTitle(schema: ComplaintSchema, t: Translation): string {
+  return (t.groups as Record<string, string>)[schema.type] ?? schema.label;
 }
 
 /** Schemas in display order: the named types first, anything else after. */

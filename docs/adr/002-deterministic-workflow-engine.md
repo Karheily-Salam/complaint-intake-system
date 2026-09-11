@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](002-deterministic-workflow-engine.ru.md)
+
 # ADR-002 — A deterministic engine owns workflow, not the model
 
 **Status:** accepted

@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](backup-restore.ru.md)
+
 # Backup and restore drill
 
 "We have backups" and "we have backups that restore" are different claims. This

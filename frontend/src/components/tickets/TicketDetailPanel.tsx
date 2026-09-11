@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import { useI18n } from "@/i18n";
 import { collectedFields, formatTimestamp, type LabelLookup } from "@/lib/labels";
 import type { ComplaintSchema, MessageOut, TicketDetail } from "@/types/api";
 
@@ -17,6 +18,7 @@ export interface TicketDetailPanelProps {
   schemas: ComplaintSchema[];
   typeLabel: LabelLookup;
   onBack: () => void;
+  /** Defaults to the translated "Back to tickets". */
   backLabel?: string;
   /** Staff: a status <select>. Demo: a read-only badge. */
   statusControl?: ReactNode;
@@ -42,38 +44,40 @@ export function TicketDetailPanel({
   schemas,
   typeLabel,
   onBack,
-  backLabel = "← Back to tickets",
+  backLabel,
   statusControl,
   actions,
 }: TicketDetailPanelProps) {
+  const { t, lang } = useI18n();
   const fields = (ticket.structured_data?.fields as Record<string, string> | undefined) ?? {};
   const rows = useMemo(
-    () => collectedFields(schemas, ticket.type, fields, HIDDEN_FIELDS),
+    () => collectedFields(schemas, ticket.type, fields, t, HIDDEN_FIELDS),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [schemas, ticket],
+    [schemas, ticket, t],
   );
   const messages = ticket.conversation?.messages ?? [];
 
   return (
     <div className="support-dash ticket-detail">
       <button className="nav-btn back-link" onClick={onBack}>
-        {backLabel}
+        {backLabel ?? t.tickets.backToTickets}
       </button>
 
       <header className="ticket-head">
         <div className="head-line">
-          <h2>Ticket #{ticket.reference}</h2>
+          <h2>{t.tickets.ticketNumber(ticket.reference)}</h2>
           {statusControl}
         </div>
         <p className="ticket-type">{typeLabel(ticket.type)}</p>
         <p className="ticket-meta">
-          {ticket.customer.email} · opened {formatTimestamp(ticket.created_at)} · last activity{" "}
-          {formatTimestamp(ticket.updated_at)}
+          {ticket.customer.email} · {t.tickets.openedAt}{" "}
+          {formatTimestamp(ticket.created_at, lang)} · {t.tickets.lastActivity}{" "}
+          {formatTimestamp(ticket.updated_at, lang)}
         </p>
       </header>
 
       {rows.length === 0 ? (
-        <p className="empty">No structured information was collected.</p>
+        <p className="empty">{t.tickets.noStructured}</p>
       ) : (
         <dl className="detail-table">
           {rows.map((row) => (
@@ -89,11 +93,13 @@ export function TicketDetailPanel({
 
       <details className="conversation-history">
         <summary>
-          Conversation history
-          {messages.length > 0 && <span className="muted-note"> · {messages.length} messages</span>}
+          {t.tickets.conversationHistory}
+          {messages.length > 0 && (
+            <span className="muted-note"> {t.tickets.messageCount(messages.length)}</span>
+          )}
         </summary>
         {messages.length === 0 ? (
-          <p className="empty">No messages recorded.</p>
+          <p className="empty">{t.tickets.noMessages}</p>
         ) : (
           <div className="thread">
             {messages.map((m) => (
@@ -107,21 +113,22 @@ export function TicketDetailPanel({
 }
 
 function ConversationMessage({ message }: { message: MessageOut }) {
+  const { t, lang } = useI18n();
   const inbound = message.direction === "inbound";
   return (
     <article className={`email ${inbound ? "inbound" : "outbound"}`}>
       <header>
-        <span className="email-dir">{inbound ? "Customer" : "System"}</span>
-        <span className="email-time">{formatTimestamp(message.created_at)}</span>
+        <span className="email-dir">{inbound ? t.tickets.customer : t.tickets.system}</span>
+        <span className="email-time">{formatTimestamp(message.created_at, lang)}</span>
       </header>
       <dl className="email-meta">
         <div>
-          <dt>From</dt>
+          <dt>{t.tickets.from}</dt>
           <dd>{message.sender}</dd>
         </div>
         {message.subject && (
           <div>
-            <dt>Subject</dt>
+            <dt>{t.tickets.subject}</dt>
             <dd>{message.subject}</dd>
           </div>
         )}

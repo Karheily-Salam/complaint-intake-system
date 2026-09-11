@@ -1,23 +1,16 @@
+import type { Translation } from "@/i18n/en";
 import type { ComplaintSchema, FieldGroup } from "@/types/api";
 
 /**
- * Human-readable names for complaint fields.
+ * Human-readable names for complaint fields, statuses and types.
  *
- * The labels come from the backend's YAML schema registry (via /schemas) - the
- * same source the conversation engine uses - so the UI cannot drift from the
- * business configuration, and adding a complaint type needs no frontend change.
- * The fallbacks below only cover keys that are not part of any schema.
+ * Field labels come from the backend's YAML schema registry (via /schemas) -
+ * the same source the conversation engine uses - so the UI cannot drift from
+ * the business configuration. The registry only speaks English, though, so a
+ * translated label wins when the active language has one and the registry
+ * label is the fallback. Statuses are UI vocabulary and come from the
+ * translation outright.
  */
-const FALLBACK_LABELS: Record<string, string> = {
-  user_id: "User ID",
-  account_email: "Account email",
-  withdrawal_transaction_id: "Withdrawal transaction ID",
-  source_wallet_or_account: "Source wallet/account",
-  transaction_date: "Transaction date",
-  deposit_method: "Deposit method",
-  problem_description: "Problem description",
-};
-
 export type LabelLookup = (key: string) => string;
 
 /** Turn `some_field_name` into `Some field name` as a last resort. */
@@ -26,48 +19,37 @@ function humanise(key: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-export function buildLabelLookup(schemas: ComplaintSchema[]): LabelLookup {
+export function buildLabelLookup(schemas: ComplaintSchema[], t: Translation): LabelLookup {
   const fromSchemas: Record<string, string> = {};
   for (const schema of schemas) {
     for (const field of schema.common_fields) {
       fromSchemas[field.key] = field.label;
     }
   }
-  return (key) => fromSchemas[key] ?? FALLBACK_LABELS[key] ?? humanise(key);
+  const translated = t.fields as Record<string, string>;
+  return (key) => translated[key] ?? fromSchemas[key] ?? humanise(key);
 }
 
-/** Complaint type -> its display label, again from the schema registry. */
-export function buildTypeLookup(schemas: ComplaintSchema[]): LabelLookup {
+/** Complaint type -> its display name. */
+export function buildTypeLookup(schemas: ComplaintSchema[], t: Translation): LabelLookup {
   const byType: Record<string, string> = {};
   for (const schema of schemas) byType[schema.type] = schema.label;
-  return (type) => byType[type] ?? humanise(type);
+  return (type) => t.complaintTypes[type] ?? byType[type] ?? humanise(type);
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  open: "Open",
-  collecting_info: "Collecting information",
-  validating: "Validating",
-  completed: "Completed",
-  abandoned: "Abandoned",
-  new: "New",
-  in_progress: "In progress",
-  resolved: "Resolved",
-  closed: "Closed",
-};
-
-export function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? humanise(status);
+export function statusLabel(status: string, t: Translation): string {
+  return (t.status as Record<string, string>)[status] ?? humanise(status);
 }
 
-export function formatTimestamp(iso: string): string {
+export function formatTimestamp(iso: string, locale?: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(locale);
 }
 
 /** Date without the time, for scanning a list of tickets. */
-export function formatDate(iso: string): string {
+export function formatDate(iso: string, locale?: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString(locale);
 }
 
 // -------------------------------------------------------------- ticket fields
@@ -92,10 +74,10 @@ const GROUP_RANK: Record<FieldGroup, number> = {
 /**
  * A ticket's collected values, labelled and ordered for the detail table.
  *
- * Labels and order come from the backend schema registry, so a new complaint
- * type needs no frontend change. A value whose key is not in the schema still
- * appears rather than being dropped: hiding data an agent may need is worse
- * than an imperfect label.
+ * Order comes from the backend schema registry, so a new complaint type needs
+ * no frontend change. A value whose key is not in the schema still appears
+ * rather than being dropped: hiding data an agent may need is worse than an
+ * imperfect label.
  *
  * `exclude` is presentation-only. It exists so the detail table can leave out
  * the long problem description, which is prose rather than a scannable value;
@@ -106,11 +88,12 @@ export function collectedFields(
   schemas: ComplaintSchema[],
   complaintType: string,
   values: Record<string, string>,
+  t: Translation,
   exclude: readonly string[] = [],
 ): CollectedFieldView[] {
   const hidden = new Set(exclude);
   const specs = schemas.find((s) => s.type === complaintType)?.common_fields ?? [];
-  const labelFor = buildLabelLookup(schemas);
+  const labelFor = buildLabelLookup(schemas, t);
   const ranked: (CollectedFieldView & { rank: number; order: number })[] = [];
 
   specs.forEach((spec, index) => {
@@ -118,7 +101,7 @@ export function collectedFields(
     if (!value || hidden.has(spec.key)) return;
     ranked.push({
       key: spec.key,
-      label: spec.label,
+      label: labelFor(spec.key),
       value,
       rank: GROUP_RANK[spec.group] ?? GROUP_RANK.details,
       order: index,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/api/client";
+import { useI18n } from "@/i18n";
 import { buildLabelLookup, buildTypeLookup, formatTimestamp, statusLabel } from "@/lib/labels";
 import { FREEFORM, SCENARIOS, type Scenario } from "@/lib/scenarios";
 import { SUPPORT_EMAIL } from "@/pages/Overview";
@@ -11,6 +12,7 @@ import type { ComplaintSchema, IntakeResult, MessageOut } from "@/types/api";
  * every system reply is produced by the backend engine.
  */
 export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void }) {
+  const { t } = useI18n();
   const [scenario, setScenario] = useState<Scenario>(SCENARIOS[0]);
   const [step, setStep] = useState(0);
   const [result, setResult] = useState<IntakeResult | null>(null);
@@ -23,8 +25,15 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
     api.listSchemas().then(setSchemas).catch(() => setSchemas([]));
   }, []);
 
-  const labelFor = useMemo(() => buildLabelLookup(schemas), [schemas]);
-  const typeLabel = useMemo(() => buildTypeLookup(schemas), [schemas]);
+  const labelFor = useMemo(() => buildLabelLookup(schemas, t), [schemas, t]);
+  const typeLabel = useMemo(() => buildTypeLookup(schemas, t), [schemas, t]);
+
+  /** Scenario name and summary come from the translation, keyed by id. */
+  const describe = (item: Scenario) =>
+    t.demo.scenarios[item.id as keyof typeof t.demo.scenarios] ?? {
+      name: item.name,
+      teaches: item.teaches,
+    };
 
   const isFreeform = scenario.id === FREEFORM.id;
   const conversationId = result?.conversation.id;
@@ -56,11 +65,7 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
       setDraft("");
       if (res.ticket_reference) onTicketCreated?.();
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? `Could not reach the intake service: ${e.message}`
-          : "Something went wrong sending that email.",
-      );
+      setError(e instanceof Error ? t.demo.unreachable(e.message) : t.demo.sendFailed);
     } finally {
       setBusy(false);
     }
@@ -73,25 +78,21 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
   return (
     <>
       <div className="demo-banner">
-        <strong>This is a demo.</strong> It simulates the email conversation in your
-        browser using the same engine that handles real mail. To send a real complaint,
-        email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+        <strong>{t.demo.bannerLead}</strong> {t.demo.bannerBody}{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
       </div>
       <div className="demo-layout">
         <aside className="card scenario-picker">
-          <h2>Demo scenarios</h2>
-          <p className="muted-note">
-            Each one sends real emails through the real engine. Nothing is scripted on the
-            system's side.
-          </p>
+          <h2>{t.demo.scenariosTitle}</h2>
+          <p className="muted-note">{t.demo.scenariosNote}</p>
           {[...SCENARIOS, FREEFORM].map((s) => (
             <button
               key={s.id}
               className={`scenario-btn ${s.id === scenario.id ? "active" : ""}`}
               onClick={() => selectScenario(s)}
             >
-              <strong>{s.name}</strong>
-              <span>{s.teaches}</span>
+              <strong>{describe(s).name}</strong>
+              <span>{describe(s).teaches}</span>
             </button>
           ))}
         </aside>
@@ -101,34 +102,30 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
             <div>
               <h2>{scenario.subject}</h2>
               <span className="muted-note">
-                {conversationId
-                  ? `Thread with ${scenario.from}`
-                  : "No messages yet — send the first email"}
+                {conversationId ? t.demo.threadWith(scenario.from) : t.demo.noMessages}
               </span>
             </div>
             {result && (
-              <span className="badge">{statusLabel(result.conversation.status)}</span>
+              <span className="badge">{statusLabel(result.conversation.status, t)}</span>
             )}
           </header>
 
           {messages.length === 0 && !busy && (
-            <p className="empty mail-empty">
-              This is a mailbox, not a form. Send the first email to start the conversation.
-            </p>
+            <p className="empty mail-empty">{t.demo.mailboxEmpty}</p>
           )}
 
           <div className="thread">
             {messages.map((m) => (
               <EmailMessage key={m.id} message={m} subject={scenario.subject} />
             ))}
-            {busy && <p className="empty">Delivering email…</p>}
+            {busy && <p className="empty">{t.demo.delivering}</p>}
           </div>
 
           {error && (
             <p className="error">
               {error}{" "}
               <button className="nav-btn" onClick={() => selectScenario(scenario)}>
-                Reset
+                {t.common.reset}
               </button>
             </p>
           )}
@@ -136,42 +133,42 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
           <footer className="composer">
             {isFreeform ? (
               <>
-                <label>Write an email as the customer</label>
+                <label>{t.demo.writeAsCustomer}</label>
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="e.g. My withdrawal has not arrived and I am worried."
+                  placeholder={t.demo.writePlaceholder}
                 />
                 <button
                   className="primary"
                   disabled={busy || !draft.trim()}
                   onClick={() => sendMessage(draft)}
                 >
-                  {busy ? "Sending…" : "Send email"}
+                  {busy ? t.common.sending : t.demo.sendEmail}
                 </button>
               </>
             ) : finished ? (
               <div className="composer-done">
                 <p className="muted-note">
-                  Scenario complete
+                  {t.demo.scenarioComplete}
                   {result?.ticket_reference
-                    ? ` — ticket ${result.ticket_reference} was created. Open the Support inbox tab to see what support received.`
+                    ? t.demo.scenarioCompleteTicket(result.ticket_reference)
                     : "."}
                 </p>
                 <button className="nav-btn" onClick={() => selectScenario(scenario)}>
-                  Run it again
+                  {t.demo.runAgain}
                 </button>
               </div>
             ) : (
               <>
-                <label>Next email from {scenario.customerName || scenario.from}</label>
+                <label>{t.demo.nextEmailFrom(scenario.customerName || scenario.from)}</label>
                 <blockquote className="queued">{nextScripted}</blockquote>
                 <button
                   className="primary"
                   disabled={busy}
                   onClick={() => sendMessage(nextScripted ?? "")}
                 >
-                  {busy ? "Sending…" : step === 0 ? "Send first email" : "Send this reply"}
+                  {busy ? t.common.sending : step === 0 ? t.demo.sendFirst : t.demo.sendReply}
                 </button>
               </>
             )}
@@ -179,28 +176,26 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
         </section>
 
         <aside className="card extraction-pane">
-          <h2>What the engine understood</h2>
+          <h2>{t.demo.understoodTitle}</h2>
           {!result && (
-            <p className="empty">
-              Structured data appears here as the engine extracts it from the emails.
-            </p>
+            <p className="empty">{t.demo.understoodEmpty}</p>
           )}
           {result && (
             <>
               <div className="field-row">
-                <span className="k">Complaint type</span>
+                <span className="k">{t.demo.complaintType}</span>
                 <span>
                   {result.complaint_type ? (
                     typeLabel(result.complaint_type)
                   ) : (
-                    <em className="pill-missing">not yet classified</em>
+                    <em className="pill-missing">{t.demo.notClassified}</em>
                   )}
                 </span>
               </div>
 
-              <h3>Collected so far</h3>
+              <h3>{t.demo.collectedSoFar}</h3>
               {collected.length === 0 ? (
-                <p className="empty">Nothing extracted yet.</p>
+                <p className="empty">{t.demo.nothingExtracted}</p>
               ) : (
                 collected.map((f) => (
                   <div className="field-row" key={f.key}>
@@ -217,22 +212,22 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
 
               {result.invalid_fields.length > 0 && (
                 <p className="pill-missing">
-                  Needs correcting: {result.invalid_fields.map(labelFor).join(", ")}
+                  {t.demo.needsCorrecting(result.invalid_fields.map(labelFor).join(", "))}
                 </p>
               )}
               {result.missing_fields.length > 0 && (
                 <>
-                  <h3>Still needed</h3>
+                  <h3>{t.demo.stillNeeded}</h3>
                   <p className="muted-note">
-                    {result.missing_fields.map(labelFor).join(", ")} — asked for one at a
-                    time, in order.
+                    {t.demo.stillNeededNote(result.missing_fields.map(labelFor).join(", "))}
                   </p>
                 </>
               )}
 
               {result.ticket_reference && (
                 <p className="ticket-created">
-                  Ticket <strong>{result.ticket_reference}</strong> created
+                  {t.demo.ticketCreated} <strong>{result.ticket_reference}</strong>{" "}
+                  {t.demo.ticketCreatedSuffix}
                 </p>
               )}
             </>
@@ -244,24 +239,25 @@ export function MailboxDemo({ onTicketCreated }: { onTicketCreated?: () => void 
 }
 
 function EmailMessage({ message, subject }: { message: MessageOut; subject: string }) {
+  const { t, lang } = useI18n();
   const inbound = message.direction === "inbound";
   return (
     <article className={`email ${inbound ? "inbound" : "outbound"}`}>
       <header>
-        <span className="email-dir">{inbound ? "Customer" : "Support system"}</span>
-        <span className="email-time">{formatTimestamp(message.created_at)}</span>
+        <span className="email-dir">{inbound ? t.demo.customer : t.demo.supportSystem}</span>
+        <span className="email-time">{formatTimestamp(message.created_at, lang)}</span>
       </header>
       <dl className="email-meta">
         <div>
-          <dt>From</dt>
+          <dt>{t.demo.from}</dt>
           <dd>{message.sender}</dd>
         </div>
         <div>
-          <dt>To</dt>
+          <dt>{t.demo.to}</dt>
           <dd>{message.recipient ?? SUPPORT_EMAIL}</dd>
         </div>
         <div>
-          <dt>Subject</dt>
+          <dt>{t.demo.subject}</dt>
           <dd>{message.subject ?? (inbound ? subject : `Re: ${subject}`)}</dd>
         </div>
       </dl>

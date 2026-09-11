@@ -7,6 +7,7 @@ import {
   type TicketGroupData,
   type TicketQueryState,
 } from "@/components/tickets/ticketGroups";
+import { useI18n } from "@/i18n";
 import { buildTypeLookup, replySubject, statusLabel } from "@/lib/labels";
 import {
   StaffRequestError,
@@ -48,6 +49,7 @@ const NO_QUERY: TicketQueryState = { status: "", q: "" };
  * Only the data source and the available actions differ.
  */
 export function SupportDashboard() {
+  const { t } = useI18n();
   const [key, setKey] = useState<string | null>(() => getStaffKey());
   const [authState, setAuthState] = useState<StaffAuthState>("ok");
   const [authMessage, setAuthMessage] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export function SupportDashboard() {
   const [schemas, setSchemas] = useState<ComplaintSchema[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const typeLabel = useMemo(() => buildTypeLookup(schemas), [schemas]);
+  const typeLabel = useMemo(() => buildTypeLookup(schemas, t), [schemas, t]);
   const types = useMemo(() => orderSchemas(schemas).map((s) => s.type), [schemas]);
   // A stable dependency for the load effect: the array identity changes on
   // every render, the joined string only when the schema set actually changes.
@@ -155,7 +157,7 @@ export function SupportDashboard() {
   }
 
   async function sendReply(reference: string, payload: TicketReplyIn) {
-    if (!key) throw new Error("Not signed in.");
+    if (!key) throw new Error(t.dashboard.notSignedIn);
     try {
       return await staffApi.replyToTicket(key, reference, payload);
     } catch (e) {
@@ -208,7 +210,7 @@ export function SupportDashboard() {
         onBack={() => setSelected(null)}
         statusControl={
           <label className="status-control">
-            <span className="sr-only">Status</span>
+            <span className="sr-only">{t.tickets.status}</span>
             <select
               value={selected.status}
               disabled={busy}
@@ -216,7 +218,7 @@ export function SupportDashboard() {
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {statusLabel(s)}
+                  {statusLabel(s, t)}
                 </option>
               ))}
             </select>
@@ -235,11 +237,11 @@ export function SupportDashboard() {
 
   return (
     <TicketBrowser
-      title="Support tickets"
-      subtitle="Internal — real tickets created by email intake"
+      title={t.dashboard.title}
+      subtitle={t.dashboard.subtitle}
       headerAction={
         <button className="nav-btn" onClick={signOut}>
-          Sign out
+          {t.dashboard.signOut}
         </button>
       }
       schemas={schemas}
@@ -249,7 +251,7 @@ export function SupportDashboard() {
       busy={busy}
       loaded={loaded}
       notice={authState === "error" ? <p className="error">{authMessage}</p> : null}
-      emptyMessage="No tickets yet. They appear here once an email conversation is complete."
+      emptyMessage={t.dashboard.empty}
       onQueryChange={setQuery}
       onOpen={openTicket}
       onGroupPage={changeGroupPage}
@@ -268,6 +270,7 @@ function StaffReplyActions({
   onReply: (payload: TicketReplyIn) => Promise<TicketReplyOut>;
   onReplied: () => void;
 }) {
+  const { t } = useI18n();
   const [composing, setComposing] = useState(false);
   const [sent, setSent] = useState<TicketReplyOut | null>(null);
 
@@ -283,7 +286,10 @@ function StaffReplyActions({
     <>
       {sent && (
         <p className={sent.delivered ? "reply-sent" : "reply-simulated"}>
-          <strong>{sent.delivered ? "Email sent." : "Not delivered."}</strong> {sent.detail}
+          <strong>
+            {sent.delivered ? t.dashboard.replySent : t.dashboard.replyNotDelivered}
+          </strong>{" "}
+          {sent.detail}
         </p>
       )}
       {composing ? (
@@ -296,7 +302,7 @@ function StaffReplyActions({
             setComposing(true);
           }}
         >
-          Reply to customer
+          {t.dashboard.replyOpen}
         </button>
       )}
     </>
@@ -319,6 +325,7 @@ function ReplyComposer({
   onCancel: () => void;
   onSend: (payload: TicketReplyIn) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [subject, setSubject] = useState(() => replySubject(ticket.conversation?.subject));
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -339,17 +346,17 @@ function ReplyComposer({
 
   return (
     <form className="reply-composer" onSubmit={submit}>
-      <h3>Reply to customer</h3>
+      <h3>{t.dashboard.replyTitle}</h3>
 
       <div className="field-row">
-        <span className="k">To</span>
+        <span className="k">{t.dashboard.replyTo}</span>
         <span>
           {ticket.customer.email}
-          <span className="muted-note"> · from this ticket</span>
+          <span className="muted-note"> {t.dashboard.replyFromTicket}</span>
         </span>
       </div>
 
-      <label htmlFor="reply-subject">Subject</label>
+      <label htmlFor="reply-subject">{t.dashboard.replySubject}</label>
       <input
         id="reply-subject"
         value={subject}
@@ -357,24 +364,24 @@ function ReplyComposer({
         disabled={sending}
       />
 
-      <label htmlFor="reply-body">Message</label>
+      <label htmlFor="reply-body">{t.dashboard.replyMessage}</label>
       <textarea
         id="reply-body"
         rows={9}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         disabled={sending}
-        placeholder="Write your reply to the customer…"
+        placeholder={t.dashboard.replyPlaceholder}
       />
 
       {error && <p className="error">{error}</p>}
 
       <div className="composer-actions">
         <button type="button" className="nav-btn" onClick={onCancel} disabled={sending}>
-          Cancel
+          {t.common.cancel}
         </button>
         <button type="submit" className="primary" disabled={sending || !body.trim()}>
-          {sending ? "Sending…" : "Send email"}
+          {sending ? t.common.sending : t.dashboard.replySend}
         </button>
       </div>
     </form>
@@ -392,31 +399,25 @@ function StaffSignIn({
   message: string | null;
   onSubmit: (key: string) => void;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
 
   return (
     <div className="staff-signin card">
-      <h2>Staff access</h2>
+      <h2>{t.dashboard.signInTitle}</h2>
 
       {state === "not-configured" ? (
         <>
-          <p className="error">The staff API is not configured on this server.</p>
+          <p className="error">{t.dashboard.notConfigured}</p>
           <p className="muted-note">
-            {message ?? "No staff key is set."} The server refuses staff requests entirely
-            rather than serving customer data without authentication, so there is nothing
-            to sign in to until an operator sets <code>STAFF_API_KEY</code> in the
-            deployment configuration.
+            {message ?? t.dashboard.noKeySet} {t.dashboard.notConfiguredBody}
           </p>
         </>
       ) : (
         <>
-          <p className="muted-note">
-            This dashboard shows real customer complaints. Enter the staff API key to
-            continue — it is held for this browser tab only and is never stored in the
-            application.
-          </p>
+          <p className="muted-note">{t.dashboard.signInBody}</p>
           {state === "unauthorized" && (
-            <p className="error">{message ?? "That key was not accepted."}</p>
+            <p className="error">{message ?? t.dashboard.keyRejected}</p>
           )}
           {state === "error" && message && <p className="error">{message}</p>}
           <form
@@ -425,17 +426,17 @@ function StaffSignIn({
               if (value.trim()) onSubmit(value.trim());
             }}
           >
-            <label htmlFor="staff-key">Staff API key</label>
+            <label htmlFor="staff-key">{t.dashboard.keyLabel}</label>
             <input
               id="staff-key"
               type="password"
               autoComplete="off"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="Paste the key"
+              placeholder={t.dashboard.keyPlaceholder}
             />
             <button className="primary" type="submit" disabled={!value.trim()}>
-              Sign in
+              {t.dashboard.signIn}
             </button>
           </form>
         </>

@@ -7,6 +7,7 @@ import {
   orderSchemas,
   type TicketQueryState,
 } from "@/components/tickets/ticketGroups";
+import { useI18n } from "@/i18n";
 import { buildTypeLookup, statusLabel } from "@/lib/labels";
 import type { ComplaintSchema, TicketDetail, TicketSummary } from "@/types/api";
 
@@ -34,6 +35,7 @@ const NO_QUERY: TicketQueryState = { status: "", q: "" };
  * small, and already returned in full by one bounded request.
  */
 export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
+  const { t } = useI18n();
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null);
   const [selected, setSelected] = useState<TicketDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
   const [query, setQuery] = useState<TicketQueryState>(NO_QUERY);
   const [pages, setPages] = useState<Record<string, number>>({});
 
-  const typeLabel = useMemo(() => buildTypeLookup(schemas), [schemas]);
+  const typeLabel = useMemo(() => buildTypeLookup(schemas, t), [schemas, t]);
   const types = useMemo(() => orderSchemas(schemas).map((s) => s.type), [schemas]);
 
   useEffect(() => {
@@ -74,8 +76,8 @@ export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
       setSelected(null);
       setDetailError(
         e instanceof Error && e.message.includes("404")
-          ? `Ticket ${reference} is no longer available.`
-          : "Could not load that ticket.",
+          ? t.inbox.ticketGone(reference)
+          : t.inbox.detailFailed,
       );
     }
   }
@@ -87,20 +89,18 @@ export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
         schemas={schemas}
         typeLabel={typeLabel}
         onBack={() => setSelected(null)}
-        backLabel="← Back to inbox"
+        backLabel={t.inbox.backToInbox}
         statusControl={
-          <span className={`badge status-${selected.status}`}>{statusLabel(selected.status)}</span>
+          <span className={`badge status-${selected.status}`}>
+            {statusLabel(selected.status, t)}
+          </span>
         }
         actions={
           <>
             <button className="primary reply-open" disabled>
-              Reply to customer
+              {t.dashboard.replyOpen}
             </button>
-            <p className="muted-note demo-limit">
-              Replying and changing status are staff actions that need an API key, so they
-              are not available in this public demo. The support dashboard uses this same
-              screen with those controls enabled.
-            </p>
+            <p className="muted-note demo-limit">{t.inbox.demoLimit}</p>
           </>
         }
       />
@@ -109,8 +109,8 @@ export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
 
   return (
     <TicketBrowser
-      title="Support inbox"
-      subtitle="Demo view — structured tickets created from the email conversations above"
+      title={t.inbox.title}
+      subtitle={t.inbox.subtitle}
       schemas={schemas}
       typeLabel={typeLabel}
       groups={groups}
@@ -119,11 +119,11 @@ export function SupportInbox({ refreshToken }: { refreshToken?: number }) {
       loaded={tickets !== null}
       notice={
         <>
-          {error && <p className="error">Could not load tickets: {error}</p>}
+          {error && <p className="error">{t.inbox.loadFailed(error)}</p>}
           {detailError && <p className="error">{detailError}</p>}
         </>
       }
-      emptyMessage="No tickets yet. Run a scenario in the Customer mailbox tab and one will appear here."
+      emptyMessage={t.inbox.empty}
       onQueryChange={(next) => {
         setQuery(next);
         setPages({});

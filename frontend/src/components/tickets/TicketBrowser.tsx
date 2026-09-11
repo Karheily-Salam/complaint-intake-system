@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useI18n } from "@/i18n";
 import { formatDate, statusLabel, type LabelLookup } from "@/lib/labels";
 import {
   groupTitle,
@@ -9,12 +10,6 @@ import {
 import type { ComplaintSchema, TicketSummary } from "@/types/api";
 
 const STATUSES = ["new", "in_progress", "resolved", "closed"];
-
-/** The status filter, as a row of chips. "" means every status. */
-const STATUS_FILTERS = [
-  { value: "", label: "All" },
-  ...STATUSES.map((value) => ({ value, label: statusLabel(value) })),
-];
 
 export interface TicketBrowserProps {
   title: string;
@@ -62,9 +57,16 @@ export function TicketBrowser({
   onOpen,
   onGroupPage,
 }: TicketBrowserProps) {
+  const { t, lang } = useI18n();
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+
+  /** The status filter, as a row of chips. "" means every status. */
+  const statusFilters = [
+    { value: "", label: t.tickets.all },
+    ...STATUSES.map((value) => ({ value, label: statusLabel(value, t) })),
+  ];
 
   const ordered = orderSchemas(schemas);
   const grandTotal = ordered.reduce((sum, s) => sum + (groups[s.type]?.total ?? 0), 0);
@@ -88,8 +90,8 @@ export function TicketBrowser({
       </header>
 
       <div className="dash-controls">
-        <div className="status-tabs" role="group" aria-label="Filter by status">
-          {STATUS_FILTERS.map((filter) => (
+        <div className="status-tabs" role="group" aria-label={t.tickets.filterByStatus}>
+          {statusFilters.map((filter) => (
             <button
               key={filter.value || "all"}
               type="button"
@@ -111,13 +113,13 @@ export function TicketBrowser({
         >
           <input
             type="search"
-            placeholder="Reference or customer email…"
+            placeholder={t.tickets.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search tickets"
+            aria-label={t.tickets.searchLabel}
           />
           <button className="nav-btn" type="submit">
-            Search
+            {t.common.search}
           </button>
           {query && (
             <button
@@ -128,18 +130,18 @@ export function TicketBrowser({
                 apply({ q: "" });
               }}
             >
-              Clear
+              {t.common.clear}
             </button>
           )}
         </form>
       </div>
 
       {notice}
-      {!loaded && busy && <p className="empty">Loading tickets…</p>}
+      {!loaded && busy && <p className="empty">{t.common.loading}</p>}
 
       {loaded && grandTotal === 0 && (
         <p className="empty">
-          {filtering ? "No tickets match those filters." : emptyMessage}
+          {filtering ? t.tickets.noMatches : emptyMessage}
         </p>
       )}
 
@@ -154,12 +156,12 @@ export function TicketBrowser({
           return (
             <section className="ticket-group" key={schema.type}>
               <h3 className="group-head">
-                {groupTitle(schema)}
+                {groupTitle(schema, t)}
                 <span className="group-count">({total})</span>
               </h3>
 
               {total === 0 ? (
-                <p className="group-empty">No tickets</p>
+                <p className="group-empty">{t.tickets.noTicketsInGroup}</p>
               ) : (
                 <ul className="ticket-rows">
                   {(group?.items ?? []).map((ticket) => (
@@ -167,6 +169,7 @@ export function TicketBrowser({
                       key={ticket.reference}
                       ticket={ticket}
                       typeLabel={typeLabel}
+                      locale={lang}
                       onOpen={() => onOpen(ticket.reference)}
                     />
                   ))}
@@ -180,17 +183,15 @@ export function TicketBrowser({
                     disabled={page <= 1 || busy}
                     onClick={() => onGroupPage(schema.type, page - 1)}
                   >
-                    ← Previous
+                    {t.common.previous}
                   </button>
-                  <span className="muted-note">
-                    Page {page} of {pageCount}
-                  </span>
+                  <span className="muted-note">{t.tickets.page(page, pageCount)}</span>
                   <button
                     className="nav-btn"
                     disabled={page >= pageCount || busy}
                     onClick={() => onGroupPage(schema.type, page + 1)}
                   >
-                    Next →
+                    {t.common.next}
                   </button>
                 </div>
               )}
@@ -204,12 +205,15 @@ export function TicketBrowser({
 function TicketRow({
   ticket,
   typeLabel,
+  locale,
   onOpen,
 }: {
   ticket: TicketSummary;
   typeLabel: LabelLookup;
+  locale: string;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <li>
       {/* One button per row: the whole line is the click target, and it stays
@@ -218,8 +222,8 @@ function TicketRow({
         <span className="row-ref">#{ticket.reference}</span>
         <span className="row-type">{typeLabel(ticket.type)}</span>
         <span className="row-email">{ticket.customer.email}</span>
-        <span className="row-date">{formatDate(ticket.updated_at)}</span>
-        <span className={`badge status-${ticket.status}`}>{statusLabel(ticket.status)}</span>
+        <span className="row-date">{formatDate(ticket.updated_at, locale)}</span>
+        <span className={`badge status-${ticket.status}`}>{statusLabel(ticket.status, t)}</span>
       </button>
     </li>
   );

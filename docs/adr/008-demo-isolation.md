@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](008-demo-isolation.ru.md)
+
 # ADR-008 — Public demo isolated from real customer data
 
 **Status:** accepted

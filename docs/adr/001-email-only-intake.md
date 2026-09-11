@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](001-email-only-intake.ru.md)
+
 # ADR-001 — Email-only intake instead of a web form
 
 **Status:** accepted

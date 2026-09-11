@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](006-sqlite-first.ru.md)
+
 # ADR-006 — SQLite for the first deployment
 
 **Status:** accepted

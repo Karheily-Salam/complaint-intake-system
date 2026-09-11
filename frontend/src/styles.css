@@ -101,7 +101,7 @@ tr:hover td { background: var(--panel-2); }
 
 /* ---------- header / shell ---------- */
 .app-header { justify-content: flex-start; flex-wrap: wrap; }
-.app-header .brand { display: flex; flex-direction: column; gap: 0.15rem; margin-right: auto; }
+.app-header .brand { display: flex; flex-direction: column; gap: 0.15rem; margin-inline-end: auto; }
 .app-header .tagline { font-size: 0.72rem; color: var(--muted); }
 .app-header .tabs { display: flex; gap: 0.5rem; }
 .gh-link {
@@ -111,7 +111,7 @@ tr:hover td { background: var(--panel-2); }
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.4rem 0.7rem;
-  margin-left: 0.75rem;
+  margin-inline-start: 0.75rem;
 }
 .gh-link:hover { color: var(--text); border-color: var(--accent); }
 
@@ -158,14 +158,14 @@ tr:hover td { background: var(--panel-2); }
 }
 .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-.flow { margin: 0; padding-left: 1.2rem; line-height: 1.7; color: var(--muted); }
+.flow { margin: 0; padding-inline-start: 1.2rem; line-height: 1.7; color: var(--muted); }
 .flow strong { color: var(--text); }
 .flow li { margin-bottom: 0.3rem; }
 
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
 .split h3 { font-size: 0.82rem; margin: 0 0 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.split ul { margin: 0; padding-left: 1.1rem; color: var(--muted); line-height: 1.6; font-size: 0.88rem; }
+.split ul { margin: 0; padding-inline-start: 1.1rem; color: var(--muted); line-height: 1.6; font-size: 0.88rem; }
 .ok-h { color: var(--ok); }
 .warn-h { color: var(--warn); }
 
@@ -193,7 +193,7 @@ tr:hover td { background: var(--panel-2); }
   padding: 0.9rem;
 }
 
-.stack { margin: 0; padding-left: 1.1rem; color: var(--muted); line-height: 1.7; font-size: 0.88rem; }
+.stack { margin: 0; padding-inline-start: 1.1rem; color: var(--muted); line-height: 1.7; font-size: 0.88rem; }
 .stack strong { color: var(--text); }
 
 code {
@@ -726,3 +726,63 @@ code {
   .dash-table { display: block; overflow-x: auto; }
   .dash-filters input[type="search"] { flex-basis: 100%; }
 }
+
+/* ---------- language switcher ---------- */
+.lang-switch { display: flex; gap: 0.2rem; align-items: center; }
+.lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.5rem;
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+.lang-btn:hover { border-color: var(--accent); color: var(--text); }
+.lang-btn.active { background: var(--accent); border-color: var(--accent); color: #0b1120; font-weight: 600; }
+
+/* ---------- right-to-left (Arabic) ----------
+   Direction itself is set on <html> by the i18n provider, so the browser
+   mirrors the layout: flexbox, grid and text alignment all follow. Only the
+   places that hard-code a physical side need help, and they are listed here
+   rather than spread through the stylesheet as logical properties, to keep the
+   LTR rules exactly as they were. */
+
+/* Arrows in navigation labels point the wrong way once mirrored; the strings
+   themselves already carry the correct arrow per language, so nothing here. */
+
+[dir="rtl"] .ticket-row { text-align: right; }
+[dir="rtl"] .detail-row dt,
+[dir="rtl"] .detail-row dd { text-align: right; }
+[dir="rtl"] .group-pager { justify-content: flex-start; }
+[dir="rtl"] .composer-actions { justify-content: flex-start; }
+[dir="rtl"] .back-link { align-self: flex-end; }
+
+/* Threads read from the correct edge, and the accent bar swaps sides. */
+[dir="rtl"] .email { text-align: right; }
+[dir="rtl"] .email.inbound { border-left: none; border-right: 3px solid var(--accent); }
+[dir="rtl"] .email.outbound { border-left: none; border-right: 3px solid var(--border); }
+
+/* The scenario list and step numbers are left-anchored blocks. */
+[dir="rtl"] .scenario-btn { text-align: right; }
+[dir="rtl"] .step { text-align: right; }
+
+/* Content that must stay left-to-right whatever the page direction: email
+   addresses, references, code and the ASCII architecture diagram. Mirroring
+   these would corrupt them rather than translate them. */
+[dir="rtl"] .diagram,
+[dir="rtl"] .row-ref,
+[dir="rtl"] .intake-address,
+[dir="rtl"] code {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: embed;
+}
+[dir="rtl"] .row-email { direction: ltr; text-align: right; }
+
+/* Arabic renders taller than Latin; a touch more line height keeps the
+   diacritics from crowding. */
+[dir="rtl"] body { line-height: 1.7; }

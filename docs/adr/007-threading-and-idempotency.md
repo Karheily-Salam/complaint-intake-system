@@ -1,3 +1,5 @@
+🇬🇧 **English** | [🇷🇺 Русский](007-threading-and-idempotency.ru.md)
+
 # ADR-007 — Email threading and idempotency strategy
 
 **Status:** accepted
