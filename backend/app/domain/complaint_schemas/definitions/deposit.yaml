@@ -14,6 +14,7 @@ common_fields:
   - key: user_id
     label: User ID
     type: string
+    group: customer
     required: true
     description: The customer's account/user identifier on the platform.
     extraction_hint: A user or account ID. Often numeric or alphanumeric.
@@ -25,6 +26,7 @@ common_fields:
   - key: account_email
     label: Account email
     type: email
+    group: customer
     required: true
     description: The email address registered on the customer's account.
     extraction_hint: The email tied to the account, which may differ from the sender address.
@@ -33,6 +35,7 @@ common_fields:
   - key: source_wallet_or_account
     label: Source wallet or payment account
     type: string
+    group: transaction
     required: true
     description: Where the funds were sent from (bank account, card, wallet, payment service, etc.).
     extraction_hint: >
@@ -44,6 +47,7 @@ common_fields:
   - key: transaction_date
     label: Transaction date
     type: date
+    group: transaction
     required: true
     description: The date the deposit was made.
     extraction_hint: A calendar date. Accept relative references like "yesterday" if resolvable.
@@ -57,6 +61,7 @@ common_fields:
   - key: deposit_method
     label: Deposit method
     type: string
+    group: transaction
     required: true
     description: How the customer made the deposit, in their own words.
     extraction_hint: >
@@ -70,6 +75,7 @@ common_fields:
   - key: problem_description
     label: Problem description
     type: text
+    group: issue
     required: true
     description: A clear description of what went wrong with the deposit.
     extraction_hint: >

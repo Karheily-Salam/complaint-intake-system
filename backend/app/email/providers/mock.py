@@ -18,6 +18,7 @@ from app.email.base import EmailProvider, InboundEmail, OutboundEmail, SentEmail
 
 class MockEmailProvider(EmailProvider):
     name = "mock"
+    is_simulated = True
 
     def __init__(self, support_address: str) -> None:
         self.support_address = support_address

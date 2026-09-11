@@ -141,6 +141,12 @@ class SentEmail(BaseModel):
 
 class EmailProvider(ABC):
     name: str = "base"
+    # True when send() only records the message instead of handing it to a
+    # real mail server. The support dashboard reports delivery from this, so a
+    # simulated send is never presented to an agent as a delivered email.
+    # Declared on the abstraction rather than inferred from ``name``, so a
+    # future provider (a sandbox/staging transport, say) states its own answer.
+    is_simulated: bool = False
 
     @abstractmethod
     async def fetch_new(self) -> list[InboundEmail]:

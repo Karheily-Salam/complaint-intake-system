@@ -19,6 +19,7 @@ common_fields:
   - key: user_id
     label: User ID
     type: string
+    group: customer
     required: false
     description: The customer's account/user identifier, if relevant.
     extraction_hint: A user or account ID, if the customer mentions one.
@@ -26,6 +27,7 @@ common_fields:
   - key: account_email
     label: Account email
     type: email
+    group: customer
     required: false
     description: The account email, if relevant.
     extraction_hint: The email tied to the account, if mentioned.
@@ -33,6 +35,7 @@ common_fields:
   - key: problem_description
     label: Problem description
     type: text
+    group: issue
     required: true
     description: A concise, self-contained description of the customer's issue.
     extraction_hint: Summarise the core problem in two or three sentences.

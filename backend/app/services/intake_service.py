@@ -17,8 +17,6 @@ resolution and the transport details of the outgoing reply differ.
 
 from __future__ import annotations
 
-import re
-
 from sqlalchemy.orm import Session
 
 from app.ai.factory import get_ai_provider
@@ -45,12 +43,14 @@ from app.email.factory import get_email_provider
 from app.repositories.conversation_repo import ConversationRepository
 from app.repositories.customer_repo import CustomerRepository
 from app.schemas.conversation import InboundEmailIn, IntakeResult
+from app.services.email_threading import SUBJECT_REF_RE, thread_subject
 from app.services.ticket_service import TicketService
 
 logger = get_logger(__name__)
 
 # Matches the opaque thread reference embedded in every outbound subject line.
-_SUBJECT_REF_RE = re.compile(r"\[Ref:([0-9a-f]{4,32})\]", re.IGNORECASE)
+# Defined in app.services.email_threading so a staff reply threads identically.
+_SUBJECT_REF_RE = SUBJECT_REF_RE
 
 
 class IntakeService:
@@ -339,12 +339,7 @@ class IntakeService:
 
     @staticmethod
     def _thread_subject(conversation: Conversation) -> str:
-        base = conversation.subject or "Your complaint"
-        if not base.lower().startswith("re:"):
-            base = f"Re: {base}"
-        if conversation.thread_token and not _SUBJECT_REF_RE.search(base):
-            base = f"{base} [Ref:{conversation.thread_token}]"
-        return base
+        return thread_subject(conversation)
 
     # ------------------------------------------------------------------ sending
 

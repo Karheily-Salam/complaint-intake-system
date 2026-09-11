@@ -8,6 +8,7 @@ common_fields:
   - key: user_id
     label: User ID
     type: string
+    group: customer
     required: true
     description: The customer's account/user identifier on the platform.
     extraction_hint: >
@@ -21,6 +22,7 @@ common_fields:
   - key: account_email
     label: Account email
     type: email
+    group: customer
     required: true
     description: The email address registered on the customer's account.
     extraction_hint: The email tied to the account, which may differ from the sender address.
@@ -29,6 +31,7 @@ common_fields:
   - key: withdrawal_transaction_id
     label: Withdrawal transaction ID
     type: string
+    group: transaction
     required: true
     description: The identifier of the specific withdrawal transaction in question.
     extraction_hint: >
@@ -42,6 +45,7 @@ common_fields:
   - key: problem_description
     label: Problem description
     type: text
+    group: issue
     required: true
     description: A clear description of what went wrong with the withdrawal.
     extraction_hint: >

@@ -4,6 +4,8 @@ import type {
   ConversationOut,
   IntakeResult,
   TicketDetail,
+  TicketReplyIn,
+  TicketReplyOut,
   TicketSummary,
 } from "@/types/api";
 
@@ -126,5 +128,13 @@ export const staffApi = {
     staffJson<TicketDetail>(key, `/tickets/${encodeURIComponent(reference)}`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    }),
+
+  // Note the absent recipient: the server addresses the reply from the ticket
+  // itself, so this call cannot be pointed at a different address.
+  replyToTicket: (key: string, reference: string, payload: TicketReplyIn) =>
+    staffJson<TicketReplyOut>(key, `/tickets/${encodeURIComponent(reference)}/reply`, {
+      method: "POST",
+      body: JSON.stringify(payload),
     }),
 };

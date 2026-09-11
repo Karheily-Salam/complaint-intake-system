@@ -81,14 +81,35 @@ export interface TicketDetail extends TicketSummary {
   conversation: ConversationOut | null;
 }
 
+/** Display grouping for a collected field, from the YAML schema registry. */
+export type FieldGroup = "customer" | "transaction" | "issue" | "details";
+
 export interface FieldSpec {
   key: string;
   label: string;
   type: string;
+  group: FieldGroup;
   required: boolean;
   description: string;
   extraction_hint: string;
   example: string | null;
+}
+
+/** A support agent's reply. No recipient: the server reads it from the ticket. */
+export interface TicketReplyIn {
+  body: string;
+  subject?: string;
+}
+
+export interface TicketReplyOut {
+  to_addr: string;
+  subject: string;
+  provider: string;
+  /** True when the provider only simulated the send (the mock adapter). */
+  simulated: boolean;
+  delivered: boolean;
+  detail: string;
+  sent_at: string;
 }
 
 export interface ComplaintSchema {

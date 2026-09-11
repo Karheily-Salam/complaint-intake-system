@@ -15,7 +15,14 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from app.api.deps import DbDep
 from app.api.security import StaffAuth
 from app.repositories.ticket_repo import TicketQuery
-from app.schemas.ticket import TicketDetail, TicketStatusUpdate, TicketSummary
+from app.schemas.ticket import (
+    TicketDetail,
+    TicketReplyIn,
+    TicketReplyOut,
+    TicketStatusUpdate,
+    TicketSummary,
+)
+from app.services.ticket_reply_service import ReplyNotPossible, TicketReplyService
 from app.services.ticket_service import TicketService
 
 DEFAULT_PAGE_SIZE = 20
@@ -74,6 +81,28 @@ def get_ticket(reference: str, db: DbDep) -> TicketDetail:
     if ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket  # type: ignore[return-value]
+
+
+@router.post("/{reference}/reply", response_model=TicketReplyOut)
+async def reply_to_customer(
+    reference: str, payload: TicketReplyIn, db: DbDep
+) -> TicketReplyOut:
+    """Email the ticket's customer, on the existing conversation thread.
+
+    The recipient comes from the ticket, not from the request, and the result
+    states whether the configured provider actually delivered anything - see
+    TicketReplyService.
+    """
+    try:
+        result = await TicketReplyService(db).reply(
+            reference, body=payload.body, subject=payload.subject
+        )
+    except ReplyNotPossible as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return TicketReplyOut(**vars(result))
 
 
 @router.patch("/{reference}", response_model=TicketDetail)

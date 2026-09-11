@@ -30,6 +30,23 @@ class FieldType(StrEnum):
     NUMBER = "number"
 
 
+class FieldGroup(StrEnum):
+    """Where a field belongs when a support agent reads the ticket.
+
+    This is presentation metadata, but it lives here with the rest of the
+    business configuration rather than in the dashboard: which facts count as
+    "who the customer is" versus "what the transaction was" is a property of
+    the complaint type, so adding a complaint type should not require a
+    frontend change to display it sensibly. The conversation engine never
+    reads it.
+    """
+
+    CUSTOMER = "customer"
+    TRANSACTION = "transaction"
+    ISSUE = "issue"
+    DETAILS = "details"  # fallback for a field whose YAML omits a group
+
+
 class FieldValidation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -46,6 +63,9 @@ class FieldSpec(BaseModel):
     key: str
     label: str
     type: FieldType = FieldType.STRING
+    # Display grouping only. Deliberately not consulted by fields_for(), so
+    # regrouping a field cannot change what the engine asks or in what order.
+    group: FieldGroup = FieldGroup.DETAILS
     required: bool = True
     description: str = ""
     # Free-text hint handed to the AI extractor. Presentation only - no logic.

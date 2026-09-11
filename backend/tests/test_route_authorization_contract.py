@@ -37,6 +37,7 @@ STAFF_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tickets"): "real ticket listing, includes customer email",
     ("GET", "/api/v1/tickets/{reference}"): "real ticket with full conversation",
     ("PATCH", "/api/v1/tickets/{reference}"): "mutates real ticket state",
+    ("POST", "/api/v1/tickets/{reference}/reply"): "sends email to a real customer",
     ("GET", "/api/v1/conversations"): "real conversation listing",
     ("GET", "/api/v1/conversations/{conversation_id}"): "real conversation with messages",
     ("GET", "/api/v1/ops/stats"): "operational counts and poller state",

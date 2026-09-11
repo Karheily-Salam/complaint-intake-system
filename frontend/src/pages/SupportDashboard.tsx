@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, staffApi, type TicketFilters } from "@/api/client";
-import { buildLabelLookup, buildTypeLookup, formatTimestamp, statusLabel } from "@/lib/labels";
+import {
+  buildTypeLookup,
+  formatTimestamp,
+  groupFields,
+  replySubject,
+  statusLabel,
+} from "@/lib/labels";
 import {
   StaffRequestError,
   clearStaffKey,
@@ -8,7 +14,14 @@ import {
   setStaffKey,
   type StaffAuthState,
 } from "@/lib/staffAuth";
-import type { ComplaintSchema, MessageOut, TicketDetail, TicketSummary } from "@/types/api";
+import type {
+  ComplaintSchema,
+  MessageOut,
+  TicketDetail,
+  TicketReplyIn,
+  TicketReplyOut,
+  TicketSummary,
+} from "@/types/api";
 
 const STATUSES = ["new", "in_progress", "resolved", "closed"];
 const PAGE_SIZE = 20;
@@ -36,7 +49,6 @@ export function SupportDashboard() {
   const [schemas, setSchemas] = useState<ComplaintSchema[]>([]);
   const [busy, setBusy] = useState(false);
 
-  const labelFor = useMemo(() => buildLabelLookup(schemas), [schemas]);
   const typeLabel = useMemo(() => buildTypeLookup(schemas), [schemas]);
 
   useEffect(() => {
@@ -105,6 +117,19 @@ export function SupportDashboard() {
     }
   }
 
+  async function sendReply(reference: string, payload: TicketReplyIn) {
+    if (!key) throw new Error("Not signed in.");
+    try {
+      return await staffApi.replyToTicket(key, reference, payload);
+    } catch (e) {
+      // An expired or revoked key should return the agent to the sign-in
+      // screen rather than being reported as a failed send; anything else is
+      // the composer's to display.
+      if (e instanceof StaffRequestError && e.state !== "error") handleError(e);
+      throw e;
+    }
+  }
+
   async function changeStatus(reference: string, next: string) {
     if (!key) return;
     setBusy(true);
@@ -144,10 +169,12 @@ export function SupportDashboard() {
       <TicketDetailView
         ticket={selected}
         busy={busy}
-        labelFor={labelFor}
+        schemas={schemas}
         typeLabel={typeLabel}
         onBack={() => setSelected(null)}
         onStatusChange={(next) => changeStatus(selected.reference, next)}
+        onReply={(payload) => sendReply(selected.reference, payload)}
+        onReplied={() => openTicket(selected.reference)}
       />
     );
   }
@@ -347,35 +374,74 @@ function StaffSignIn({
 
 // ------------------------------------------------------------------- detail
 
+/**
+ * One ticket, as a support agent needs to read it.
+ *
+ * Ordered to answer the agent's questions in the order they ask them: who is
+ * this, what went wrong, what are the account and transaction details, what do
+ * I do next. The email thread that produced all of it is investigation
+ * material rather than the main event, so it is collapsed at the bottom.
+ */
 function TicketDetailView({
   ticket,
   busy,
-  labelFor,
+  schemas,
   typeLabel,
   onBack,
   onStatusChange,
+  onReply,
+  onReplied,
 }: {
   ticket: TicketDetail;
   busy: boolean;
-  labelFor: (key: string) => string;
+  schemas: ComplaintSchema[];
   typeLabel: (key: string) => string;
   onBack: () => void;
   onStatusChange: (status: string) => void;
+  onReply: (payload: TicketReplyIn) => Promise<TicketReplyOut>;
+  onReplied: () => void;
 }) {
+  const [composing, setComposing] = useState(false);
+  const [sent, setSent] = useState<TicketReplyOut | null>(null);
+
   const fields = (ticket.structured_data?.fields as Record<string, string> | undefined) ?? {};
-  const entries = Object.entries(fields).filter(([, v]) => v);
+  // The issue text is pulled out and shown as prose; the remaining groups are
+  // rendered as labelled rows. Both come from the schema registry, so a new
+  // complaint type groups itself without a change here.
+  const issue = useMemo(
+    () => groupFields(schemas, ticket.type, fields, ["issue"])[0]?.fields ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [schemas, ticket],
+  );
+  const groups = useMemo(
+    () => groupFields(schemas, ticket.type, fields, ["customer", "transaction", "details"]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [schemas, ticket],
+  );
   const messages = ticket.conversation?.messages ?? [];
 
+  async function send(payload: TicketReplyIn) {
+    const outcome = await onReply(payload);
+    setSent(outcome);
+    setComposing(false);
+    // Reload so the agent's own message appears in the history below.
+    onReplied();
+  }
+
   return (
-    <div className="support-dash">
+    <div className="support-dash ticket-detail">
       <button className="nav-btn back-link" onClick={onBack}>
         ← Back to tickets
       </button>
 
-      <header className="dash-header">
+      <header className="ticket-head">
         <div>
           <h2>Ticket #{ticket.reference}</h2>
-          <span className="muted-note">{typeLabel(ticket.type)}</span>
+          <p className="ticket-type">{typeLabel(ticket.type)}</p>
+          <p className="ticket-meta">
+            Opened {formatTimestamp(ticket.created_at)} · Last activity{" "}
+            {formatTimestamp(ticket.updated_at)}
+          </p>
         </div>
         <label className="status-control">
           Status
@@ -393,60 +459,167 @@ function TicketDetailView({
         </label>
       </header>
 
-      <div className="layout-2col">
-        <section className="card">
-          <h3>Customer</h3>
-          <div className="field-row">
-            <span className="k">Email</span>
-            <span>{ticket.customer.email}</span>
-          </div>
-          <div className="field-row">
-            <span className="k">Name</span>
-            <span>{ticket.customer.name ?? "(not provided)"}</span>
-          </div>
-          <div className="field-row">
-            <span className="k">Created</span>
-            <span>{formatTimestamp(ticket.created_at)}</span>
-          </div>
-          <div className="field-row">
-            <span className="k">Updated</span>
-            <span>{formatTimestamp(ticket.updated_at)}</span>
-          </div>
+      <section className="ticket-block">
+        <h3>Customer</h3>
+        <div className="field-row">
+          <span className="k">Email</span>
+          <span>
+            <a href={`mailto:${ticket.customer.email}`}>{ticket.customer.email}</a>
+          </span>
+        </div>
+        <div className="field-row">
+          <span className="k">Name</span>
+          <span>{ticket.customer.name ?? "(not provided)"}</span>
+        </div>
+      </section>
 
-          <h3>Collected information</h3>
-          {entries.length === 0 ? (
-            <p className="empty">No structured fields captured.</p>
-          ) : (
-            entries.map(([k, v]) => (
-              <div className="field-row" key={k}>
-                <span className="k">{labelFor(k)}</span>
-                <span>{v}</span>
-              </div>
-            ))
-          )}
+      <section className="ticket-block issue-block">
+        <h3>Issue</h3>
+        {issue.length > 0 ? (
+          issue.map((f) => (
+            <p className="issue-text" key={f.key}>
+              {f.value}
+            </p>
+          ))
+        ) : (
+          <p className="issue-text">{ticket.concise_description}</p>
+        )}
+      </section>
 
-          <h3>Summary</h3>
-          <p>{ticket.concise_description}</p>
-        </section>
-
-        <section className="card">
-          <h3>Conversation</h3>
-          <p className="muted-note">
-            The email exchange that produced this ticket, oldest first — useful for seeing
-            how each value was collected.
-          </p>
-          {messages.length === 0 ? (
-            <p className="empty">No messages recorded.</p>
-          ) : (
-            <div className="thread">
-              {messages.map((m) => (
-                <ConversationMessage key={m.id} message={m} />
-              ))}
+      {groups.map((group) => (
+        <section className="ticket-block" key={group.group}>
+          <h3>{group.heading}</h3>
+          {group.fields.map((f) => (
+            <div className="field-row" key={f.key}>
+              <span className="k">{f.label}</span>
+              <span>{f.value}</span>
             </div>
-          )}
+          ))}
         </section>
-      </div>
+      ))}
+
+      <section className="ticket-actions">
+        {sent && (
+          <p className={sent.delivered ? "reply-sent" : "reply-simulated"}>
+            <strong>{sent.delivered ? "Email sent." : "Not delivered."}</strong> {sent.detail}
+          </p>
+        )}
+        {composing ? (
+          <ReplyComposer ticket={ticket} onCancel={() => setComposing(false)} onSend={send} />
+        ) : (
+          <button
+            className="primary reply-open"
+            onClick={() => {
+              setSent(null);
+              setComposing(true);
+            }}
+          >
+            Reply to customer
+          </button>
+        )}
+      </section>
+
+      <details className="conversation-history">
+        <summary>
+          Conversation history
+          {messages.length > 0 && (
+            <span className="muted-note"> · {messages.length} messages</span>
+          )}
+        </summary>
+        <p className="muted-note">
+          The full email exchange, oldest first — how each value above was collected.
+        </p>
+        {messages.length === 0 ? (
+          <p className="empty">No messages recorded.</p>
+        ) : (
+          <div className="thread">
+            {messages.map((m) => (
+              <ConversationMessage key={m.id} message={m} />
+            ))}
+          </div>
+        )}
+      </details>
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ composer
+
+/**
+ * The reply composer.
+ *
+ * The recipient is shown but not editable, and is not sent to the server at
+ * all: the backend addresses the message from the ticket. That makes replying
+ * to the wrong person impossible rather than merely discouraged.
+ */
+function ReplyComposer({
+  ticket,
+  onCancel,
+  onSend,
+}: {
+  ticket: TicketDetail;
+  onCancel: () => void;
+  onSend: (payload: TicketReplyIn) => Promise<void>;
+}) {
+  const [subject, setSubject] = useState(() => replySubject(ticket.conversation?.subject));
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!body.trim() || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      await onSend({ body: body.trim(), subject: subject.trim() || undefined });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setSending(false);
+    }
+  }
+
+  return (
+    <form className="reply-composer" onSubmit={submit}>
+      <h3>Reply to customer</h3>
+
+      <div className="field-row">
+        <span className="k">To</span>
+        <span>
+          {ticket.customer.email}
+          <span className="muted-note"> · from this ticket</span>
+        </span>
+      </div>
+
+      <label htmlFor="reply-subject">Subject</label>
+      <input
+        id="reply-subject"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        disabled={sending}
+      />
+
+      <label htmlFor="reply-body">Message</label>
+      <textarea
+        id="reply-body"
+        rows={9}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        disabled={sending}
+        placeholder="Write your reply to the customer…"
+      />
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="composer-actions">
+        <button type="button" className="nav-btn" onClick={onCancel} disabled={sending}>
+          Cancel
+        </button>
+        <button type="submit" className="primary" disabled={sending || !body.trim()}>
+          {sending ? "Sending…" : "Send email"}
+        </button>
+      </div>
+    </form>
   );
 }
 
