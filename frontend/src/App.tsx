@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { Overview } from "@/pages/Overview";
+import { Overview, SUPPORT_EMAIL } from "@/pages/Overview";
 import { MailboxDemo } from "@/pages/MailboxDemo";
 import { SupportInbox } from "@/pages/SupportInbox";
 
-type View = "overview" | "mailbox" | "support";
+type View = "home" | "demo" | "support";
 
 const GITHUB_URL = "https://github.com/Karheily-Salam/complaint-intake-system";
 
 const TABS: { id: View; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "mailbox", label: "Customer mailbox" },
+  { id: "home", label: "Home" },
+  { id: "demo", label: "Try the demo" },
   { id: "support", label: "Support inbox" },
 ];
 
 export function App() {
-  // Overview first: a visitor should learn what this is before being handed an
-  // interface. The demo is one click away.
-  const [view, setView] = useState<View>("overview");
+  // Home first: a visitor with a complaint needs the email address, not an
+  // interface. The demo is one click away for anyone who wants to see it work.
+  const [view, setView] = useState<View>("home");
   // Bumped when the demo creates a ticket, so the support inbox reloads and
   // the two halves of the product stay in step.
   const [ticketsVersion, setTicketsVersion] = useState(0);
@@ -26,7 +26,7 @@ export function App() {
       <header className="app-header">
         <div className="brand">
           <h1>Complaint Intake System</h1>
-          <span className="tagline">Email-based intake · AI-assisted · deterministic engine</span>
+          <span className="tagline">Report a problem by email — no form, no account</span>
         </div>
         <nav className="tabs">
           {TABS.map((tab) => (
@@ -44,14 +44,16 @@ export function App() {
         </a>
       </header>
       <main>
-        {view === "overview" && <Overview onOpenDemo={() => setView("mailbox")} />}
-        {view === "mailbox" && (
+        {view === "home" && <Overview onOpenDemo={() => setView("demo")} />}
+        {view === "demo" && (
           <MailboxDemo onTicketCreated={() => setTicketsVersion((v) => v + 1)} />
         )}
         {view === "support" && <SupportInbox refreshToken={ticketsVersion} />}
       </main>
       <footer className="app-footer">
-        Portfolio project · FastAPI · React · Docker ·{" "}
+        To report a problem, email{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Portfolio project ·
+        FastAPI · React · Docker ·{" "}
         <a href={GITHUB_URL} target="_blank" rel="noreferrer">
           source
         </a>

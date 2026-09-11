@@ -324,3 +324,131 @@ code {
 .status-new { color: var(--accent); }
 .status-resolved, .status-closed { color: var(--ok); }
 .status-in_progress { color: var(--warn); }
+
+/* ---------- customer-facing intake (homepage) ---------- */
+.intake-hero {
+  text-align: center;
+  padding: 3rem 1.25rem 2.25rem;
+  background: linear-gradient(180deg, var(--panel) 0%, rgba(30, 41, 59, 0.35) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.intake-hero h2 { margin: 0 0 0.5rem; font-size: 2rem; line-height: 1.2; }
+.intake-lede { margin: 0 0 1.5rem; color: var(--muted); font-size: 1.05rem; }
+
+/* The address is the product. Make it the largest thing on the page. */
+.intake-address {
+  display: inline-block;
+  font-size: clamp(1.25rem, 5vw, 2rem);
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 2px solid transparent;
+}
+.intake-address:hover { border-bottom-color: var(--accent); }
+
+.intake-actions { margin: 1.25rem 0 1rem; }
+.intake-cta {
+  display: inline-block;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.8rem 2rem;
+  margin-top: 0;
+}
+.intake-noform {
+  margin: 0;
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.intake-explainer {
+  max-width: 62ch;
+  margin: 1.5rem auto 0.5rem;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+.step {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.15rem;
+}
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #082f49;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+}
+.step h3 { margin: 0 0 0.35rem; font-size: 0.95rem; }
+.step p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.55; }
+
+.demo-invite {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+}
+.demo-invite h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+.demo-invite p { margin: 0; max-width: 64ch; }
+.demo-invite .primary { margin-top: 0; white-space: nowrap; }
+
+/* ---------- about / technical section ---------- */
+.section-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0 0;
+}
+.about-header { padding-top: 0.5rem; }
+.about-header h2 { margin: 0 0 0.4rem; font-size: 1.35rem; }
+.about-header p { max-width: 72ch; margin: 0 0 0.9rem; }
+
+/* ---------- demo banner ---------- */
+.demo-banner {
+  background: #2a2411;
+  border: 1px solid #6b5a1e;
+  color: #f5e6b8;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.demo-banner a { color: var(--accent); }
+
+/* ---------- mobile ---------- */
+@media (max-width: 640px) {
+  main { padding: 1rem; }
+  .app-header { gap: 0.75rem; padding: 0.75rem 1rem; }
+  .app-header .tabs { flex-wrap: wrap; }
+  .intake-hero { padding: 2rem 1rem 1.75rem; }
+  .intake-hero h2 { font-size: 1.5rem; }
+  .demo-invite { flex-direction: column; align-items: flex-start; }
+}

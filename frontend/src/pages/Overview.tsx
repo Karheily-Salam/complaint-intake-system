@@ -4,6 +4,9 @@ import type { ComplaintSchema } from "@/types/api";
 
 const GITHUB_URL = "https://github.com/Karheily-Salam/complaint-intake-system";
 
+/** The real customer interface. Not a form - the mailbox itself. */
+export const SUPPORT_EMAIL = "complaints@startplus.tech";
+
 interface Health {
   email_provider?: string;
   ai_provider?: string;
@@ -11,12 +14,15 @@ interface Health {
 }
 
 /**
- * Landing view: what the system is and how it works.
+ * The public homepage.
  *
- * The complaint types and provider status below are fetched from the running
- * backend rather than hard-coded, so this page can never drift from what is
- * actually deployed - the schemas come from the YAML registry that also drives
- * the conversation engine.
+ * Ordered for the person it is actually for: a customer with a problem, who
+ * needs one thing from this page - the address to write to. Everything about
+ * how the system works sits below that, for anyone who wants it.
+ *
+ * The complaint types and provider status further down are fetched from the
+ * running backend rather than hard-coded, so the page cannot drift from what
+ * is actually deployed.
  */
 export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
   const [schemas, setSchemas] = useState<ComplaintSchema[]>([]);
@@ -31,33 +37,90 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
 
   return (
     <div className="overview">
-      <section className="hero">
-        <h2>Email-based complaint intake with AI-assisted classification</h2>
-        <p className="lede">
-          Customers report a problem by sending an ordinary email. The system holds a
-          multi-turn conversation in that same email thread, asks for exactly one missing
-          detail at a time, validates every answer, and produces a structured ticket for
-          support staff.
-        </p>
-        <p className="callout">
-          There is no customer-facing form, portal, login, or link. The mailbox <em>is</em>{" "}
-          the interface.
-        </p>
-        <div className="hero-actions">
-          <button className="primary" onClick={onOpenDemo}>
-            Try the live demo
-          </button>
-          <a className="ghost-btn" href={GITHUB_URL} target="_blank" rel="noreferrer">
-            Source on GitHub
+      {/* ---------------- customer-facing ---------------- */}
+
+      <section className="intake-hero">
+        <h2>Have a problem?</h2>
+        <p className="intake-lede">Send us an email describing your problem.</p>
+
+        <a className="intake-address" href={`mailto:${SUPPORT_EMAIL}`}>
+          {SUPPORT_EMAIL}
+        </a>
+
+        <div className="intake-actions">
+          <a
+            className="primary intake-cta"
+            href={`mailto:${SUPPORT_EMAIL}?subject=Complaint`}
+          >
+            Send a complaint
           </a>
+        </div>
+
+        <p className="intake-noform">No form. No account. Just email us.</p>
+      </section>
+
+      <p className="intake-explainer">
+        Just describe what happened in your own words. Our assistant will ask for any
+        information that is missing and guide you through the process by email.
+      </p>
+
+      <section className="steps">
+        <div className="step">
+          <span className="step-number">1</span>
+          <h3>Send your complaint</h3>
+          <p>Email us and describe what happened.</p>
+        </div>
+        <div className="step">
+          <span className="step-number">2</span>
+          <h3>Answer a few questions</h3>
+          <p>We'll ask only for the information needed to process your complaint.</p>
+        </div>
+        <div className="step">
+          <span className="step-number">3</span>
+          <h3>Get a ticket</h3>
+          <p>
+            Once everything is complete, your case is turned into a structured ticket for
+            our support team.
+          </p>
         </div>
       </section>
 
+      <section className="demo-invite">
+        <div>
+          <h3>Want to see it work first?</h3>
+          <p className="muted-note">
+            The demo simulates the email conversation in your browser, using the same
+            engine that handles real mail. It is a simulation — to send a real complaint,
+            email the address above.
+          </p>
+        </div>
+        <button className="primary" onClick={onOpenDemo}>
+          Try the demo
+        </button>
+      </section>
+
+      {/* ---------------- project / technical ---------------- */}
+
+      <hr className="section-divider" />
+
+      <header className="about-header">
+        <h2>About this project</h2>
+        <p className="muted-note">
+          An email-only complaint intake system: unstructured customer emails become
+          structured support tickets through a deterministic workflow engine with
+          AI-assisted extraction. Built as a portfolio project — the engineering notes
+          below are for developers and recruiters.
+        </p>
+        <a className="ghost-btn" href={GITHUB_URL} target="_blank" rel="noreferrer">
+          Source on GitHub ↗
+        </a>
+      </header>
+
       <section className="card">
-        <h2>How a complaint flows through the system</h2>
+        <h2>How it works</h2>
         <ol className="flow">
           <li>
-            <strong>Customer emails</strong> the complaints mailbox — free-form, any of
+            <strong>Customer emails</strong> the complaints mailbox — free-form, in any of
             three languages.
           </li>
           <li>
@@ -89,7 +152,7 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
 
       <div className="layout-2col">
         <section className="card">
-          <h2>What the AI does — and does not — decide</h2>
+          <h2>AI vs deterministic logic</h2>
           <p className="muted-note">
             The boundary is the core design rule, and it is enforced by tests.
           </p>
@@ -147,7 +210,7 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
       </div>
 
       <section className="card">
-        <h2>Reliability engineering</h2>
+        <h2>Reliability &amp; security</h2>
         <div className="grid-3">
           <div>
             <h3>Idempotency</h3>
@@ -192,9 +255,9 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
           <div>
             <h3>Data separation</h3>
             <p>
-              Real complaints require an API key. This demo reads only synthetic
+              Real complaints require an API key. The demo reads only synthetic
               conversations, filtered in the database query rather than hidden by the UI —
-              so what you type here is sandboxed, and real customer data is unreachable
+              so what you type there is sandboxed, and real customer data is unreachable
               from it.
             </p>
           </div>
@@ -237,7 +300,7 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
         </section>
 
         <section className="card">
-          <h2>Stack &amp; deployment</h2>
+          <h2>Technology stack</h2>
           <ul className="stack">
             <li>
               <strong>Backend</strong> — Python 3.12, FastAPI, SQLAlchemy 2.0, Alembic,
@@ -266,14 +329,16 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
           </ul>
           {emailProvider && (
             <p className="muted-note status-line">
-              Live status: AI provider <code>{health?.ai_provider}</code>, email provider{" "}
-              <code>{emailProvider}</code>
+              <strong>Deployment status:</strong> AI provider <code>{health?.ai_provider}</code>,
+              email provider <code>{emailProvider}</code>.
               {emailProvider === "mock" && (
                 <>
                   {" "}
-                  — the IMAP/SMTP integration is implemented and tested, but this
-                  deployment is not attached to a live mailbox, so the demo below stands
-                  in for the customer’s mail client.
+                  The IMAP/SMTP integration is implemented and tested, and the mailbox{" "}
+                  <code>{SUPPORT_EMAIL}</code> exists with inbound mail reachable — but
+                  this deployment is not yet attached to it, because outbound SMTP is
+                  currently blocked on the host. Until that is lifted, the demo stands in
+                  for the customer’s mail client and no real mail is processed.
                 </>
               )}
             </p>
