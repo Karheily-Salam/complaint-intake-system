@@ -294,33 +294,8 @@ code {
   font-size: 0.85rem;
 }
 
-/* ---------- support inbox ---------- */
-.ticket-list { display: flex; flex-direction: column; gap: 0.6rem; }
-.ticket-card {
-  text-align: left;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.65rem 0.75rem;
-  color: var(--text);
-  cursor: pointer;
-}
-.ticket-card:hover { border-color: var(--accent); }
-.ticket-card.active { border-color: var(--accent); background: #14324a; }
-.ticket-card-top { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
-.ticket-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
-.ticket-card-customer { font-size: 0.8rem; margin-bottom: 0.2rem; }
-.ticket-card-desc {
-  font-size: 0.78rem;
-  color: var(--muted);
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.ticket-card-time { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
-.ticket-detail-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+/* The support inbox now renders the shared ticket components (see
+   components/tickets), so its old card/list styles are gone. */
 .status-new { color: var(--accent); }
 .status-resolved, .status-closed { color: var(--ok); }
 .status-in_progress { color: var(--warn); }
@@ -513,29 +488,84 @@ code {
 }
 .dash-header h2 { margin: 0 0 0.15rem; }
 
-.dash-filters { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
-.dash-filters input[type="search"] { flex: 1 1 18rem; min-width: 12rem; }
-.dash-filters select { flex: 0 0 auto; width: auto; min-width: 9rem; }
-.dash-filters .nav-btn { flex: 0 0 auto; }
+/* ---------- ticket list controls ---------- */
+.dash-controls { display: flex; flex-direction: column; gap: 0.7rem; }
 
-.dash-table { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-.dash-table th {
-  background: var(--panel-2);
+.status-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.chip {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 0.3rem 0.85rem;
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1120;
+  font-weight: 600;
+}
+
+.dash-search { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.dash-search input[type="search"] { flex: 1 1 20rem; min-width: 12rem; }
+.dash-search .nav-btn { flex: 0 0 auto; }
+
+/* ---------- complaint-type groups ---------- */
+.ticket-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0.5rem 0 0.1rem;
   font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.45rem;
 }
-.dash-table tbody tr { cursor: pointer; }
-.dash-table tbody tr:hover td { background: var(--panel-2); }
-.dash-table td { vertical-align: middle; }
+.group-count { font-weight: 400; opacity: 0.8; }
+.group-empty { margin: 0.2rem 0 0.4rem; font-size: 0.84rem; color: var(--muted); }
 
-.dash-pager {
+.ticket-rows { list-style: none; margin: 0; padding: 0; }
+.ticket-rows li + li { border-top: 1px solid var(--border); }
+
+/* A row is one button: the whole line is the click target, and it stays
+   keyboard-reachable without faking button semantics on a <tr>. */
+.ticket-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(8rem, 1fr) minmax(10rem, 1.4fr) 6.5rem auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 0.86rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.ticket-row:hover { background: var(--panel-2); }
+.row-ref { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--accent); }
+.row-type { color: var(--text); }
+.row-email, .row-date { color: var(--muted); font-size: 0.82rem; }
+.row-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-row .badge { justify-self: end; }
+
+.group-pager {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem 0.2rem;
 }
 
 .back-link { align-self: flex-start; }
@@ -562,35 +592,75 @@ code {
 .ticket-detail { max-width: 46rem; gap: 0.35rem; }
 
 .ticket-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.9rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+.head-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 .ticket-head h2 { margin: 0; }
+
+/* Visually hidden but still announced by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .ticket-type { margin: 0.15rem 0 0; font-size: 0.95rem; color: var(--text); }
 .ticket-meta { margin: 0.35rem 0 0; font-size: 0.76rem; color: var(--muted); }
 
-.ticket-block { padding: 0.9rem 0 0.2rem; }
-.ticket-block h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-.ticket-block .field-row:last-child { border-bottom: none; }
+/* One compact table instead of titled sections: with a handful of short values
+   per complaint, headings cost more vertical space than the grouping saves.
 
-.issue-block { padding-bottom: 0.4rem; }
-.issue-text {
-  margin: 0 0 0.5rem;
-  font-size: 0.98rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
+   Every row uses the same two-column grid with an identical fixed label
+   column, so all labels share one left edge and all values share another. The
+   alignment comes from the grid, never from padding out text. */
+.detail-table {
+  /* Fixed, so every label and every value share one left edge. Sized to the
+     longest label in the schemas ("Source wallet or payment account"); a
+     longer one wraps inside this column rather than shifting the values. */
+  --label-col: 13rem;
+  margin: 0.9rem 0 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.detail-row {
+  display: grid;
+  grid-template-columns: var(--label-col) 1fr;
+  gap: 0.5rem 1.25rem;
+  /* Top-aligned so a value that wraps to several lines keeps its label
+     beside the first line instead of drifting to the middle. */
+  align-items: start;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+.detail-row + .detail-row { border-top: 1px solid var(--border); }
+.detail-row dt { margin: 0; color: var(--muted); }
+.detail-row dd {
+  margin: 0;
+  /* min-width:0 lets the value column shrink inside the grid, so a long
+     unbroken string wraps instead of widening the column and pushing every
+     other row's value out of alignment. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  /* Too narrow for two columns: stack, and the labels still share an edge. */
+  .detail-row { grid-template-columns: 1fr; gap: 0.15rem; }
 }
 
 .ticket-actions {
@@ -599,6 +669,10 @@ code {
   padding-top: 1.1rem;
 }
 .reply-open { margin-top: 0; }
+.reply-open:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Explains why the demo's staff controls are inert, without hiding them - the
+   point is to show the real screen, not a reduced imitation of it. */
+.demo-limit { margin: 0.7rem 0 0; }
 
 .reply-sent, .reply-simulated {
   font-size: 0.84rem;

@@ -64,71 +64,82 @@ export function formatTimestamp(iso: string): string {
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
 }
 
-// --------------------------------------------------------------- field groups
-//
-// Which group a field belongs to is business configuration and arrives from the
-// backend schema registry. Only the heading text and the order an agent reads
-// the groups in live here, because those are presentation.
+/** Date without the time, for scanning a list of tickets. */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
+}
 
-const GROUP_HEADINGS: Record<FieldGroup, string> = {
-  customer: "Customer information",
-  transaction: "Transaction information",
-  issue: "Issue",
-  details: "Other details",
-};
+// -------------------------------------------------------------- ticket fields
 
-export interface GroupedField {
+export interface CollectedFieldView {
   key: string;
   label: string;
   value: string;
 }
 
-export interface FieldGroupView {
-  group: FieldGroup;
-  heading: string;
-  fields: GroupedField[];
-}
+// The ticket detail shows one flat table rather than sections, but the order
+// still matters for scanning: who the customer is, then what the transaction
+// was, then the long prose last so it cannot push the identifiers off-screen.
+// That ordering is what the schema registry's `group` is used for here.
+const GROUP_RANK: Record<FieldGroup, number> = {
+  customer: 0,
+  transaction: 1,
+  details: 2,
+  issue: 3,
+};
 
 /**
- * Arrange a ticket's collected values into display groups.
+ * A ticket's collected values, labelled and ordered for the detail table.
  *
- * Fields keep their schema order within a group, and the caller chooses which
- * groups to render where. A value whose key is not in the schema still appears
- * (under "Other details") rather than being dropped: hiding data an agent may
- * need is worse than an imperfect heading.
+ * Labels and order come from the backend schema registry, so a new complaint
+ * type needs no frontend change. A value whose key is not in the schema still
+ * appears rather than being dropped: hiding data an agent may need is worse
+ * than an imperfect label.
+ *
+ * `exclude` is presentation-only. It exists so the detail table can leave out
+ * the long problem description, which is prose rather than a scannable value;
+ * the field itself is untouched in the API, the workflow and the conversation
+ * history, where the customer's original message still carries it.
  */
-export function groupFields(
+export function collectedFields(
   schemas: ComplaintSchema[],
   complaintType: string,
   values: Record<string, string>,
-  order: FieldGroup[],
-): FieldGroupView[] {
-  const schema = schemas.find((s) => s.type === complaintType);
-  const specs = schema?.common_fields ?? [];
+  exclude: readonly string[] = [],
+): CollectedFieldView[] {
+  const hidden = new Set(exclude);
+  const specs = schemas.find((s) => s.type === complaintType)?.common_fields ?? [];
   const labelFor = buildLabelLookup(schemas);
+  const ranked: (CollectedFieldView & { rank: number; order: number })[] = [];
 
-  const buckets = new Map<FieldGroup, GroupedField[]>();
-  const push = (group: FieldGroup, field: GroupedField) => {
-    const bucket = buckets.get(group);
-    if (bucket) bucket.push(field);
-    else buckets.set(group, [field]);
-  };
-
-  const placed = new Set<string>();
-  for (const spec of specs) {
+  specs.forEach((spec, index) => {
     const value = values[spec.key];
-    if (!value) continue;
-    push(spec.group ?? "details", { key: spec.key, label: spec.label, value });
-    placed.add(spec.key);
-  }
-  for (const [key, value] of Object.entries(values)) {
-    if (placed.has(key) || !value) continue;
-    push("details", { key, label: labelFor(key), value });
-  }
+    if (!value || hidden.has(spec.key)) return;
+    ranked.push({
+      key: spec.key,
+      label: spec.label,
+      value,
+      rank: GROUP_RANK[spec.group] ?? GROUP_RANK.details,
+      order: index,
+    });
+  });
 
-  return order
-    .filter((group) => buckets.get(group)?.length)
-    .map((group) => ({ group, heading: GROUP_HEADINGS[group], fields: buckets.get(group) ?? [] }));
+  const placed = new Set(ranked.map((f) => f.key));
+  Object.entries(values).forEach(([key, value], index) => {
+    if (placed.has(key) || !value || hidden.has(key)) return;
+    ranked.push({
+      key,
+      label: labelFor(key),
+      value,
+      rank: GROUP_RANK.details,
+      order: specs.length + index,
+    });
+  });
+
+  return ranked
+    .sort((a, b) => a.rank - b.rank || a.order - b.order)
+    .map(({ key, label, value }) => ({ key, label, value }));
 }
 
 /** The subject the reply composer shows. The server applies the same rule. */
