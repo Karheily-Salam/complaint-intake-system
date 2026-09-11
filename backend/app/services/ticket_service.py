@@ -9,7 +9,7 @@ from app.db.models.conversation import Conversation
 from app.db.models.ticket import Ticket
 from app.domain.complaint_schemas.registry import get_registry
 from app.domain.enums import ComplaintStatus, TicketStatus
-from app.repositories.ticket_repo import TicketRepository
+from app.repositories.ticket_repo import TicketPage, TicketQuery, TicketRepository
 
 
 class TicketService:
@@ -91,6 +91,14 @@ class TicketService:
 
     def list_tickets(self, limit: int = 100, *, demo_only: bool = False) -> list[Ticket]:
         return self.tickets.list(limit=limit, demo_only=demo_only)
+
+    def search_tickets(self, query: TicketQuery) -> TicketPage:
+        """Filtered, paginated listing for the support dashboard."""
+        if query.status and query.status not in {s.value for s in TicketStatus}:
+            raise ValueError(f"Invalid ticket status '{query.status}'")
+        if query.complaint_type and not self.registry.try_get(query.complaint_type):
+            raise ValueError(f"Unknown complaint type '{query.complaint_type}'")
+        return self.tickets.search(query)
 
     def get_ticket(self, reference: str, *, demo_only: bool = False) -> Ticket | None:
         return self.tickets.get_by_reference(reference, demo_only=demo_only)

@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Overview, SUPPORT_EMAIL } from "@/pages/Overview";
 import { MailboxDemo } from "@/pages/MailboxDemo";
 import { SupportInbox } from "@/pages/SupportInbox";
+import { SupportDashboard } from "@/pages/SupportDashboard";
 
 type View = "home" | "demo" | "support";
+
+/** The internal dashboard lives off the tab bar, at #/support. */
+const STAFF_HASH = "#/support";
 
 const GITHUB_URL = "https://github.com/Karheily-Salam/complaint-intake-system";
 
@@ -20,6 +24,38 @@ export function App() {
   // Bumped when the demo creates a ticket, so the support inbox reloads and
   // the two halves of the product stay in step.
   const [ticketsVersion, setTicketsVersion] = useState(0);
+  // Hash routing rather than a router dependency: one internal route does not
+  // justify adding react-router to a three-view app.
+  const [isStaffRoute, setIsStaffRoute] = useState(
+    () => window.location.hash === STAFF_HASH,
+  );
+
+  useEffect(() => {
+    const sync = () => setIsStaffRoute(window.location.hash === STAFF_HASH);
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  if (isStaffRoute) {
+    return (
+      <>
+        <header className="app-header">
+          <div className="brand">
+            <h1>Complaint Intake System</h1>
+            <span className="tagline">Internal support dashboard</span>
+          </div>
+          <nav className="tabs">
+            <a className="nav-btn" href="#/">
+              ← Back to site
+            </a>
+          </nav>
+        </header>
+        <main>
+          <SupportDashboard />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -56,6 +92,12 @@ export function App() {
         FastAPI · React · Docker ·{" "}
         <a href={GITHUB_URL} target="_blank" rel="noreferrer">
           source
+        </a>
+        {" · "}
+        {/* Deliberately understated: an internal tool, not a customer CTA.
+            Access is enforced by the server, not by this link being quiet. */}
+        <a className="staff-link" href={STAFF_HASH}>
+          Staff
         </a>
       </footer>
     </>

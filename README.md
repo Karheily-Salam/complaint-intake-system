@@ -45,7 +45,7 @@ email provider by default.
   [Demo scenarios](#demo-scenarios) · [Running locally](#running-locally)
 - [Two API surfaces](#two-api-surfaces-public-demo-vs-staff) ·
   [Security](#security-considerations) · [Email integration](#email-integration)
-- [Testing](#testing) · [Production deployment](#production-deployment) ·
+- [Support dashboard](#support-dashboard) · [Testing](#testing) · [Production deployment](#production-deployment) ·
   [Honest limits](#honest-limits)
 - [Architecture decisions (ADRs)](docs/adr/) ·
   [Backup & restore drill](docs/operations/backup-restore.md) ·
@@ -56,7 +56,7 @@ email provider by default.
 | Environment | Email | Data |
 |---|---|---|
 | **Local** (`docker compose up`) | `mock` — nothing sent or received | synthetic, created by you |
-| **Deployed** (http://72.56.114.70/) | `mock` — no mailbox attached | synthetic demo records only |
+| **Deployed** (http://startplus.tech/) | `mock` — no mailbox attached | synthetic demo records only |
 | **Real email** (`imap_smtp`) | implemented and tested, not switched on | needs a mailbox + credentials |
 
 The IMAP/SMTP integration is complete and covered by tests; the deployment is
@@ -135,7 +135,7 @@ backend/
     api/              FastAPI routes
   alembic/            migrations (the only schema-authoring mechanism)
   scripts/            check_email.py (mailbox pre-flight), seed_demo.py
-  tests/              236 tests
+  tests/              258 tests
 frontend/             React + TypeScript SPA (overview, mail-client demo, support inbox)
 ops/scripts/          backup + health-check scripts used on the server
 docs/adr/             architecture decision records
@@ -320,6 +320,35 @@ carries no reliable signal (a bare transaction ID, say), the thread's known
 language is kept rather than guessed at. Language is detected and phrased by
 the AI layer — but *which* field is asked for is still the engine's decision.
 
+## Support dashboard
+
+Tickets are only half the product; someone has to work them. The dashboard at
+`#/support` is the internal side:
+
+- **Ticket list** — reference, type, customer, status, created/updated, newest
+  first, with search by reference or customer email and filters for status and
+  complaint type. Filtering and pagination happen in SQL, so the browser never
+  receives rows the agent did not ask for.
+- **Ticket detail** — the collected fields under their schema labels, the AI
+  summary, and the full email conversation that produced them, so an agent can
+  see *how* each value was obtained.
+- **Status updates** — new → in progress → resolved → closed, validated
+  server-side against the existing `TicketStatus` enum.
+
+It is not linked as a customer call to action: the homepage stays focused on
+the mailbox, and the dashboard is reached from a quiet footer link. That is
+presentation only — **access is enforced by the server on every request**, so
+the URL being obscure protects nothing and is not relied upon.
+
+The agent enters the staff key in the browser; it is held in `sessionStorage`
+for that tab and is never compiled into the bundle, because a key shipped in
+JavaScript is not a secret. If the server has no `STAFF_API_KEY` configured the
+dashboard says so plainly rather than appearing broken — the API fails closed
+with `503`, and no key can unlock it.
+
+**Customer flow:** email → AI-assisted intake → structured ticket → support dashboard
+**Support flow:** dashboard → ticket → conversation history → status update
+
 ## Two API surfaces: public demo vs. staff
 
 Real complaints contain personal data — the customer's address, their account
@@ -328,7 +357,7 @@ public demo in the **database query**, not in the UI:
 
 | | Public (no credential) | Staff (`X-API-Key`) |
 |---|---|---|
-| Endpoints | `POST /inbox`, `GET /demo/tickets`, `GET /demo/conversations/{id}` | `GET/PATCH /tickets`, `GET /conversations` |
+| Endpoints | `POST /inbox`, `GET /demo/tickets`, `GET /demo/conversations/{id}` | `GET/PATCH /tickets`, `GET /conversations`, `GET /ops/stats` |
 | Data | only conversations flagged `is_demo` — created by whoever is trying the demo | everything, including real inbound email |
 | Mutation | none | ticket status |
 
@@ -448,7 +477,7 @@ path, including error paths. Full procedure: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe -m pytest      # 236 tests
+../.venv/Scripts/python.exe -m pytest      # 258 tests
 ../.venv/Scripts/python.exe -m ruff check .
 ```
 

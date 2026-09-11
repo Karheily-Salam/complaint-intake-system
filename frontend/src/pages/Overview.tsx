@@ -156,6 +156,11 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
                 <strong>A ticket is created</strong> with a numeric reference, the customer
                 gets a confirmation, and support receives the structured summary.
               </li>
+              <li>
+                <strong>Support works the ticket</strong> in an internal dashboard — the
+                collected fields, the conversation that produced them, and the status
+                lifecycle — behind the staff API key.
+              </li>
             </ol>
           </section>
 
@@ -331,7 +336,7 @@ export function Overview({ onOpenDemo }: { onOpenDemo: () => void }) {
                   SQLite on a persistent volume, UFW-firewalled VPS
                 </li>
                 <li>
-                  <strong>Tests</strong> — 236 automated tests covering the conversation
+                  <strong>Tests</strong> — 258 automated tests covering the conversation
                   lifecycle, threading, idempotency, retry behaviour, authentication, and
                   security boundaries
                 </li>
