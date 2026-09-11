@@ -24,12 +24,15 @@ import html
 import imaplib
 import re
 import smtplib
+import threading
 from collections import OrderedDict
 from email.message import EmailMessage
 from email.utils import make_msgid, parseaddr
 
+from app.core import timing
 from app.core.logging import get_logger
 from app.email.base import EmailProvider, InboundEmail, OutboundEmail, SentEmail
+from app.email.idle import ImapIdleConnection
 
 logger = get_logger(__name__)
 
@@ -61,6 +64,8 @@ class ImapSmtpEmailProvider(EmailProvider):
         mail_domain: str,
         imap_timeout: int = 30,
         smtp_timeout: int = 30,
+        idle_enabled: bool = False,
+        idle_keepalive_seconds: int = 300,
         uid_cache_size: int = MAX_TRACKED_UIDS,
     ) -> None:
         self.imap_host = imap_host
@@ -95,6 +100,16 @@ class ImapSmtpEmailProvider(EmailProvider):
         self._uid_by_message_id: OrderedDict[str, bytes] = OrderedDict()
         self._uid_cache_size = uid_cache_size
 
+        # IDLE is opt-in and lazily created: nothing is connected until the
+        # poller first waits, so constructing a provider stays side-effect
+        # free (which the tests rely on).
+        self._idle_enabled = idle_enabled
+        self._idle_keepalive_seconds = idle_keepalive_seconds
+        self._idle: ImapIdleConnection | None = None
+        # One IMAP connection is a single command stream, so waiting and
+        # fetching must never overlap on it.
+        self._imap_lock = threading.Lock()
+
     # ---- EmailProvider (async surface) ----
     #
     # imaplib and smtplib are blocking, and everything calling these runs on
@@ -107,29 +122,100 @@ class ImapSmtpEmailProvider(EmailProvider):
     async def fetch_new(self) -> list[InboundEmail]:
         return await asyncio.to_thread(self._fetch_new_blocking)
 
+    async def wait_for_activity(self, timeout: float) -> bool:
+        """Block in IMAP IDLE until the server reports activity.
+
+        Falls back to the base class's plain wait when IDLE is disabled, so
+        turning the flag off restores the previous fixed-interval behaviour
+        exactly.
+        """
+        if not self._idle_enabled:
+            return await super().wait_for_activity(timeout)
+        return await asyncio.to_thread(self._wait_for_activity_blocking, timeout)
+
+    async def shutdown(self) -> None:
+        idle = self._idle
+        if idle is None:
+            return
+        # Unblock the waiting thread first; only then tear the socket down.
+        idle.request_stop()
+        await asyncio.to_thread(self._close_idle_blocking, idle)
+        self._idle = None
+
+    def _close_idle_blocking(self, idle: ImapIdleConnection) -> None:
+        # The waiting thread notices the stop within one select slice and
+        # releases the lock. Closing without it would pull the socket out from
+        # under that thread; the timeout keeps a wedged thread from blocking
+        # shutdown indefinitely.
+        acquired = self._imap_lock.acquire(timeout=5)
+        try:
+            idle.close()
+        finally:
+            if acquired:
+                self._imap_lock.release()
+
     async def mark_processed(self, message_id: str) -> None:
         await asyncio.to_thread(self._mark_processed_blocking, message_id)
 
     async def send(self, email_out: OutboundEmail) -> SentEmail:
-        return await asyncio.to_thread(self._send_blocking, email_out)
+        timing.mark(timing.SMTP_STARTED)
+        try:
+            return await asyncio.to_thread(self._send_blocking, email_out)
+        finally:
+            timing.mark(timing.SMTP_FINISHED)
 
     # ---- blocking implementations ----
 
+    def _idle_connection(self) -> ImapIdleConnection:
+        if self._idle is None:
+            self._idle = ImapIdleConnection(
+                connect=self._imap_connect,
+                mailbox=self.imap_mailbox,
+                keepalive_seconds=self._idle_keepalive_seconds,
+            )
+        return self._idle
+
+    def _wait_for_activity_blocking(self, timeout: float) -> bool:
+        with self._imap_lock:
+            return self._idle_connection().wait(timeout)
+
+    def _search_and_fetch(self, conn: imaplib.IMAP4) -> list[InboundEmail]:
+        """UID SEARCH UNSEEN + fetch, on an already-selected connection."""
+        status, data = conn.uid("search", None, "UNSEEN")
+        if status != "OK" or not data or not data[0]:
+            return []
+        emails: list[InboundEmail] = []
+        for uid in data[0].split():
+            parsed = self._fetch_one(conn, uid)
+            if parsed is not None:
+                self._remember_uid(parsed.message_id, uid)
+                emails.append(parsed)
+        return emails
+
     def _fetch_new_blocking(self) -> list[InboundEmail]:
+        # Reuse the already authenticated, already selected IDLE connection
+        # when there is one. Leaving IDLE is a single round trip; a fresh
+        # connection would cost a TLS handshake plus LOGIN plus SELECT, which
+        # is the bulk of the detection-to-fetch latency.
+        if self._idle_enabled and self._idle is not None:
+            with self._imap_lock:
+                idle = self._idle
+                idle.exit_idle()
+                timing.mark(timing.IDLE_EXITED)
+                conn = idle.connection
+                if conn is not None:
+                    try:
+                        return self._search_and_fetch(conn)
+                    except Exception:
+                        # Drop the session and fall through to a clean
+                        # connection rather than failing this cycle.
+                        idle.close()
+                        self._idle = None
+
         conn = self._imap_connect()
         try:
             conn.select(self.imap_mailbox)
-            status, data = conn.uid("search", None, "UNSEEN")
-            if status != "OK" or not data or not data[0]:
-                return []
-
-            emails: list[InboundEmail] = []
-            for uid in data[0].split():
-                parsed = self._fetch_one(conn, uid)
-                if parsed is not None:
-                    self._remember_uid(parsed.message_id, uid)
-                    emails.append(parsed)
-            return emails
+            return self._search_and_fetch(conn)
         finally:
             self._imap_disconnect(conn)
 
@@ -144,6 +230,19 @@ class ImapSmtpEmailProvider(EmailProvider):
         if uid is None:
             logger.warning("mark_processed called for unknown message_id (already handled?)")
             return
+        if self._idle_enabled and self._idle is not None:
+            with self._imap_lock:
+                idle = self._idle
+                idle.exit_idle()
+                conn = idle.connection
+                if conn is not None:
+                    try:
+                        conn.uid("store", uid, "+FLAGS", r"(\Seen)")
+                        return
+                    except Exception:
+                        idle.close()
+                        self._idle = None
+
         conn = self._imap_connect()
         try:
             conn.select(self.imap_mailbox)
@@ -232,7 +331,12 @@ class ImapSmtpEmailProvider(EmailProvider):
     # ---- parsing ----
 
     def _fetch_one(self, conn: imaplib.IMAP4, uid: bytes) -> InboundEmail | None:
-        status, data = conn.uid("fetch", uid, "(RFC822)")
+        # BODY.PEEK[], never RFC822 or BODY[]: on a read-write mailbox those
+        # set \Seen as a side effect of the fetch itself (RFC 3501 6.4.5). The
+        # message would then be marked read before its transaction commits, so
+        # a failed turn could never be retried - UID SEARCH UNSEEN would not
+        # return it again. Only mark_processed() may set \Seen.
+        status, data = conn.uid("fetch", uid, "(BODY.PEEK[])")
         if status != "OK" or not data or data[0] is None:
             logger.warning("Failed to fetch IMAP message uid=%s", uid)
             return None

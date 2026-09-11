@@ -43,6 +43,8 @@ def get_email_provider() -> EmailProvider:
             smtp_use_tls=settings.smtp_use_tls,
             smtp_from_addr=settings.smtp_sender,
             mail_domain=settings.mail_domain,
+            idle_enabled=settings.email_idle_enabled,
+            idle_keepalive_seconds=settings.email_idle_keepalive_seconds,
             imap_timeout=settings.imap_timeout_seconds,
             smtp_timeout=settings.smtp_timeout_seconds,
         )

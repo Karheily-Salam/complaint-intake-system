@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     imap_mailbox: str = "INBOX"
     # How often the background poller checks the mailbox.
     email_poll_interval_seconds: int = 60
+    # IMAP IDLE turns the poll interval into a *fallback* ceiling: the
+    # server pushes a notification the moment mail lands, so the interval
+    # is only reached when nothing arrives. Disabling it restores plain
+    # fixed-interval polling exactly.
+    email_idle_enabled: bool = True
+    email_idle_keepalive_seconds: int = 300
     # Socket timeout for IMAP. Without one, a connection that is accepted but
     # then blackholed (exactly what a silently-dropping firewall produces)
     # hangs the poller forever.

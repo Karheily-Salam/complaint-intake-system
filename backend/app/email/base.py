@@ -7,6 +7,7 @@ API / Microsoft Graph provider) must not require engine or service changes.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -161,6 +162,26 @@ class EmailProvider(ABC):
     @abstractmethod
     async def send(self, email: OutboundEmail) -> SentEmail:
         """Send an outbound email and return delivery metadata."""
+
+    async def wait_for_activity(self, timeout: float) -> bool:
+        """Block until new mail may have arrived, or until ``timeout`` elapses.
+
+        This is a *trigger only*. Returning True means "something may have
+        changed, look now" - never what changed. The caller still decides what
+        to fetch, so a spurious wake-up costs one empty search and a missed
+        notification is caught by the timeout. Both failure directions are
+        therefore safe, which is what allows an aggressive implementation.
+
+        The default simply waits, which is exactly the fixed-interval polling
+        behaviour every provider had before: overriding this is an
+        optimisation, never a requirement.
+        """
+        await asyncio.sleep(timeout)
+        return False
+
+    async def shutdown(self) -> None:
+        """Release any long-lived resources. Default: nothing to release."""
+        return None
 
     async def mark_processed(self, message_id: str) -> None:
         """Acknowledge that ``message_id`` was successfully persisted.

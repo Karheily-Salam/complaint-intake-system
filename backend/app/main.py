@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.core.migrations import run_migrations
 from app.domain.complaint_schemas.registry import get_registry
+from app.email.factory import get_email_provider
 from app.services.email_poller import EmailPoller
 
 logger = get_logger(__name__)
@@ -59,9 +60,16 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         if poller_task is not None:
+            # Stop the loop first, so no new cycle starts, then release the
+            # provider. Cancelling ends the awaiting task immediately, but a
+            # thread parked in select() keeps running until told to stop - and
+            # the executor waits for it at interpreter exit - so the provider
+            # shutdown is what actually lets the process go.
             poller_task.cancel()
             with suppress(asyncio.CancelledError):
                 await poller_task
+            with suppress(Exception):
+                await get_email_provider().shutdown()
 
 
 def create_app() -> FastAPI:

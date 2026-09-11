@@ -26,6 +26,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app.core import timing
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
@@ -34,6 +35,20 @@ from app.email.factory import get_email_provider
 from app.services.intake_service import IntakeService
 
 logger = get_logger(__name__)
+
+# How many consecutive "woken but nothing there" cycles are tolerated before
+# the loop starts pacing itself. Three absorbs legitimate empty wake-ups - our
+# own ticket notifications landing in a single-mailbox setup are skipped, not
+# processed - without ever touching a real delivery.
+_EMPTY_WAKEUP_TOLERANCE = 3
+_EMPTY_WAKEUP_FLOOR_SECONDS = 0.05
+# Ceiling on that pacing. Deliberately small rather than the poll interval: in
+# this degraded state a real email may still arrive, and it should wait at most
+# this long, not the full fallback interval.
+_EMPTY_WAKEUP_MAX_FLOOR_SECONDS = 1.0
+# Pause after an unexpected error in a cycle, so a wait that fails instantly
+# every time cannot turn the loop into a hot spin that starves the API.
+_ERROR_RETRY_SECONDS = 1.0
 
 
 @dataclass
@@ -117,8 +132,10 @@ class EmailPoller:
         """
         self.health.record_start()
         started = time.monotonic()
+        timing.mark(timing.POLL_STARTED)
         try:
             inbox = await self._with_timeout(self.provider.fetch_new(), "fetch")
+            timing.mark(timing.FETCHED)
         except Exception as exc:
             # Network/auth failure, or a provider that hung past the ceiling:
             # nothing was consumed, so simply try again next interval. The
@@ -153,8 +170,15 @@ class EmailPoller:
         return processed
 
     async def _process_one(self, inbound) -> bool:
+        # Each message gets its own trace, so a batch of several does not
+        # report the first message's timings for all of them.
+        with timing.message_trace() as trace:
+            return await self._process_traced(inbound, trace)
+
+    async def _process_traced(self, inbound, trace) -> bool:
         db = self._session_factory()
         started = time.monotonic()
+        timing.mark(timing.INTAKE_STARTED)
         try:
             result = await IntakeService(db).handle_inbound_email(inbound)
         except Exception:
@@ -168,6 +192,11 @@ class EmailPoller:
             return False
         finally:
             db.close()
+
+        timing.mark(timing.INTAKE_FINISHED)
+        if trace is not None:
+            # Stage breakdown only - never content, addresses or credentials.
+            logger.info("email=%s latency %s", inbound.message_id, trace.summary())
 
         # message_id is the correlation id across the whole pipeline: it
         # appears here, in the idempotency skip, and on the stored message.
@@ -208,17 +237,76 @@ class EmailPoller:
             logger.warning("Could not acknowledge email %s with the provider", inbound.message_id)
 
     async def run_forever(self) -> None:
+        """Wait for the mailbox to say something, then drain it. Repeat.
+
+        With IDLE the wait ends the instant the server reports activity, so
+        the configured interval is only ever a ceiling for a quiet mailbox -
+        it never sits between a notification and the reply. Without IDLE the
+        wait is that interval, which is exactly the previous behaviour.
+        """
         interval = max(5, settings.email_poll_interval_seconds)
-        logger.info("Email poller started (every %ss, provider=%s)", interval, self.provider.name)
+        idle = settings.email_idle_enabled
+        logger.info(
+            "Email poller started (provider=%s, idle=%s, max wait %ss)",
+            self.provider.name,
+            "on" if idle else "off",
+            interval,
+        )
+        # Drain anything already waiting before settling into the wait loop.
+        first_pass = True
+        empty_wakeups = 0
         while True:
             try:
-                await self.poll_once()
+                if not first_pass:
+                    notified = await self.provider.wait_for_activity(interval)
+                else:
+                    notified = False
+                    first_pass = False
+
+                # Seed the trace with the detection marks the provider
+                # recorded, so the log line spans notification to SMTP.
+                seed = {}
+                if notified:
+                    idle_conn = getattr(self.provider, "_idle", None)
+                    if idle_conn is not None:
+                        # Only T0 - leaving IDLE happens inside the fetch that
+                        # follows, and marks itself there.
+                        seed[timing.NOTIFIED] = idle_conn.last_notified_at
+                timing.start_trace(**seed)
+
+                # Straight into the fetch - no sleep, no debounce, no batching
+                # window between the notification and the work.
+                handled = await self.poll_once()
+
+                # Busy-loop guard. A healthy IDLE wait blocks in select(), so
+                # this never fires on the real path: a genuine notification
+                # always has mail behind it. But a provider that returns
+                # "notified" instantly with an empty mailbox - a stuck socket,
+                # a bug - would otherwise spin the event loop at 100% CPU and
+                # starve the HTTP API. The floor only applies after a
+                # *repeated* empty wake-up, so it can never delay a real one.
+                if notified and handled == 0:
+                    empty_wakeups += 1
+                else:
+                    empty_wakeups = 0
+                if empty_wakeups >= _EMPTY_WAKEUP_TOLERANCE:
+                    await asyncio.sleep(
+                        min(
+                            _EMPTY_WAKEUP_FLOOR_SECONDS * empty_wakeups,
+                            _EMPTY_WAKEUP_MAX_FLOOR_SECONDS,
+                        )
+                    )
+                else:
+                    # Always yield, so a fast cycle cannot starve the API.
+                    await asyncio.sleep(0)
             except asyncio.CancelledError:
                 logger.info("Email poller stopped")
                 raise
             except Exception:
                 logger.exception("Unexpected error in email poll cycle")
-            await asyncio.sleep(interval)
+                await asyncio.sleep(_ERROR_RETRY_SECONDS)
+            finally:
+                timing.clear_trace()
 
 
 def our_own_addresses() -> set[str]:
