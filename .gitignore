@@ -21,6 +21,12 @@ backend/datasets/feedback/
 .env
 .env.local
 *.local
+# Snapshots taken before editing a deployment's .env. They hold the same
+# credentials as .env itself, so they must never be committable, and never
+# show up as untracked files inviting `git add -A`. Keep them outside the
+# repository (/opt/backups/env/ on the server); this is the backstop.
+.env.bak*
+.env.*.bak
 
 # ---- Node / frontend ----
 node_modules/

@@ -416,6 +416,13 @@ reference is supplied — and the demo intake endpoint refuses to continue a
 non-demo thread, so claiming someone's address and guessing an id reaches
 nothing. Real email will likewise never thread onto a demo conversation.
 
+The same boundary covers the mail **transport**. `POST /inbox` takes an
+unverified sender address, so a demo conversation is answered by a *simulated*
+provider even when a real one is configured: the public demo cannot make
+production send mail to an address someone chose, and the reply is still shown
+from the stored thread exactly as before. A staff reply to a demo ticket is
+refused for the same reason.
+
 The browser app deliberately holds no API key: a key shipped inside a
 JavaScript bundle is not a secret, so the dashboard reads demo data and shows
 ticket status read-only. `STAFF_API_KEY` has no default and no fallback — if

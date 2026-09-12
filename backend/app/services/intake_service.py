@@ -42,7 +42,7 @@ from app.domain.enums import (
     TicketStatus,
 )
 from app.email.base import InboundEmail, OutboundEmail
-from app.email.factory import get_email_provider
+from app.email.factory import get_demo_email_provider, get_email_provider
 from app.email.quoting import strip_quoted_reply
 from app.ml.prediction_log import record_classification, record_extraction
 from app.repositories.conversation_repo import ConversationRepository
@@ -419,6 +419,18 @@ class IntakeService:
 
     # ------------------------------------------------------------------ sending
 
+    def _transport(self, conversation: Conversation):
+        """The email provider this conversation may use.
+
+        Real conversations use the configured transport. Demo conversations -
+        created by anyone through the public ``POST /inbox`` with an unverified
+        sender address - are confined to a simulated one, so the demo can never
+        make production send mail to an address someone chose (see
+        app.email.factory.get_demo_email_provider). Locally, where the
+        configured provider is already the mock, this is the same object.
+        """
+        return get_demo_email_provider() if conversation.is_demo else self.email
+
     async def _send_and_record_reply(
         self,
         conversation: Conversation,
@@ -429,7 +441,7 @@ class IntakeService:
         in_reply_to: str | None = None,
         references: list[str] | None = None,
     ) -> None:
-        sent = await self.email.send(
+        sent = await self._transport(conversation).send(
             OutboundEmail(
                 to_addr=to_addr,
                 from_addr=settings.smtp_sender,
@@ -468,7 +480,7 @@ class IntakeService:
         """
         subject = f"[Ticket {ticket.reference}] {ticket.title}"
         body = self._ticket_notification_body(conversation, customer, complaint, ticket)
-        await self.email.send(
+        await self._transport(conversation).send(
             OutboundEmail(
                 to_addr=settings.support_inbox_address,
                 from_addr=settings.smtp_sender,
@@ -584,7 +596,9 @@ class IntakeService:
             EmailLog(
                 conversation_id=conversation.id,
                 direction=direction,
-                provider=self.email.name,
+                # The provider that actually handled it, which for a demo
+                # conversation is the simulated one whatever is configured.
+                provider=self._transport(conversation).name,
                 from_addr=from_addr,
                 to_addr=to_addr,
                 subject=subject,

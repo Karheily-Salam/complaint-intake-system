@@ -9,6 +9,31 @@ from app.email.base import EmailProvider
 
 
 @lru_cache
+def _simulated_provider() -> EmailProvider:
+    from app.email.providers.mock import MockEmailProvider
+
+    return MockEmailProvider(support_address=settings.support_inbox_address)
+
+
+def get_demo_email_provider() -> EmailProvider:
+    """The transport demo conversations are allowed to use.
+
+    ``POST /inbox`` is public and takes an unverified sender address, so with a
+    real transport configured it would let anyone make this system send mail to
+    an address of their choosing - with values they supplied echoed back in the
+    confirmation. Demo conversations therefore never reach the real transport:
+    they are answered by a simulated one, which is exactly what the demo shows
+    anyway (the reply is returned in the response and stored on the thread).
+
+    When the configured provider is *already* simulated - local development,
+    the test suite - that same instance is returned, so there is one mailbox to
+    inspect and nothing about local behaviour changes.
+    """
+    configured = get_email_provider()
+    return configured if configured.is_simulated else _simulated_provider()
+
+
+@lru_cache
 def get_email_provider() -> EmailProvider:
     provider = settings.email_provider.lower()
 
