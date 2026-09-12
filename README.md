@@ -91,31 +91,53 @@ resulting ticket still has to be complete, valid, and never duplicated.
 ## Architecture
 
 ```mermaid
-flowchart TD
-    C["Customer mailbox"]
-    P["EmailPoller<br/>(IMAP IDLE, ~1s)"]
-    EP["EmailProvider<br/>mock │ IMAP+SMTP"]
-    I["IntakeService<br/>orchestration + persistence"]
-    E["ConversationEngine<br/>deterministic · no I/O"]
-    AI["AIProvider<br/>rule-based │ Ollama"]
-    R["Schema registry<br/>(YAML)"]
-    DB[("SQLite<br/>persistent volume")]
-    S["Support inbox"]
+flowchart LR
+    CUST["Customer<br/>any mail client"]
+    AGENT["Support agent<br/>browser"]
+    VISITOR["Demo visitor<br/>browser"]
 
-    C -->|inbound email| P --> EP --> I
-    I --> E
-    E -->|classify · extract<br/>summarise · phrase| AI
-    E -->|required fields<br/>validation rules| R
-    I --> DB
-    I -->|one question, or<br/>confirmation + reference| EP -->|SMTP| C
-    I -->|completed ticket| S
+    MAILBOX["Mailbox provider<br/>IMAP and SMTP"]
+    OLLAMA["Ollama local LLM<br/>optional, AI_PROVIDER=ollama"]
+
+    subgraph host["VPS, Docker Compose"]
+        subgraph fe["frontend container, nginx 1.27-alpine"]
+            PROXY["Nginx<br/>host port 80<br/>rate limit on POST /api/v1/inbox"]
+            SPA["Built React SPA"]
+        end
+
+        subgraph be["backend container, uvicorn on 8000, expose only"]
+            API["FastAPI app<br/>public and staff routers"]
+            POLLER["EmailPoller task<br/>runs when EMAIL_PROVIDER is not mock"]
+            MLW["ML worker task<br/>runs when ML_WORKER_ENABLED"]
+        end
+
+        DB[("SQLite on backend_data volume<br/>/app/data/complaint_intake.db")]
+    end
+
+    CUST -->|"sends and receives email"| MAILBOX
+    MAILBOX -->|"IDLE notification, then UNSEEN fetch"| POLLER
+    POLLER -->|"SMTP reply and ticket notification"| MAILBOX
+
+    VISITOR -->|"no credential: POST /inbox, /demo/*, /schemas, /health"| PROXY
+    AGENT -->|"X-API-Key: /tickets, /conversations, /ops, /ml"| PROXY
+
+    PROXY --> SPA
+    PROXY -->|"proxies /api/ to backend:8000"| API
+
+    API --> DB
+    POLLER --> DB
+    MLW --> DB
+
+    API -.->|"only when configured"| OLLAMA
 ```
 
-The dependency direction is the point: `ConversationEngine` depends only on the
-`AIProvider` interface and the schema registry. It performs no I/O, holds no
-state, and has no idea email exists, which is why the same engine serves both
-the real mailbox and the local simulator, and why swapping the mail transport
-touches no business logic.
+[View all architecture diagrams →](docs/diagrams/README.md)
+
+Inside the backend container, the dependency direction is the point:
+`ConversationEngine` depends only on the `AIProvider` interface and the schema
+registry. It performs no I/O, holds no state, and has no idea email exists,
+which is why the same engine serves both the real mailbox and the local
+simulator, and why swapping the mail transport touches no business logic.
 
 Full component reference, including the email flow, threading, ticket
 lifecycle and the ML layer: [docs/architecture.md](docs/architecture.md).
