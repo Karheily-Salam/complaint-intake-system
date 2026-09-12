@@ -38,9 +38,16 @@ STAFF_ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/tickets/{reference}"): "real ticket with full conversation",
     ("PATCH", "/api/v1/tickets/{reference}"): "mutates real ticket state",
     ("POST", "/api/v1/tickets/{reference}/reply"): "sends email to a real customer",
+    ("GET", "/api/v1/tickets/{reference}/similar"): "other tickets' references and status",
+    ("POST", "/api/v1/tickets/{reference}/corrections"): "changes real ticket data",
+    ("GET", "/api/v1/tickets/{reference}/corrections"): "original and corrected values",
     ("GET", "/api/v1/conversations"): "real conversation listing",
     ("GET", "/api/v1/conversations/{conversation_id}"): "real conversation with messages",
     ("GET", "/api/v1/ops/stats"): "operational counts and poller state",
+    ("GET", "/api/v1/ml/incidents"): "incident clusters list real ticket references",
+    ("GET", "/api/v1/ml/feedback"): "staff corrections include collected values",
+    ("GET", "/api/v1/ml/models"): "model versions and thresholds of this instance",
+    ("GET", "/api/v1/ml/monitoring"): "live prediction volumes and drift on real traffic",
 }
 
 # FastAPI generates these; they are documentation, not application endpoints.

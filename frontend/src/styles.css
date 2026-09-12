@@ -658,10 +658,96 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* Provenance of an extracted value: a check mark when it was quoted verbatim,
+   otherwise the customer's original words in small muted type. */
+.evidence-mark {
+  margin-inline-start: 0.4rem;
+  color: #4ade80;
+  font-size: 0.8rem;
+  cursor: help;
+}
+.evidence-quote {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.evidence-quote q { font-style: italic; }
+
 @media (max-width: 560px) {
   /* Too narrow for two columns: stack, and the labels still share an edge. */
   .detail-row { grid-template-columns: 1fr; gap: 0.15rem; }
 }
+
+/* Model suggestions under the ticket's facts: visually quieter than the facts
+   and the actions, because they are hints for the agent, not ticket data. */
+.ticket-insights { margin-top: 1rem; }
+.ticket-insights h3 { margin: 0 0 0.15rem; font-size: 0.9rem; }
+.ticket-insights .muted-note { margin: 0 0 0.5rem; font-size: 0.74rem; color: var(--muted); }
+.similar-list { list-style: none; margin: 0; padding: 0; }
+.similar-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.similar-meta, .similar-reasons { color: var(--muted); font-size: 0.76rem; }
+.similar-reasons { flex-basis: 100%; }
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.badge.warn { background: #78350f; color: #fde68a; }
+.badge.danger { background: #7f1d1d; color: #fecaca; }
+
+/* Staff corrections: collapsed under the suggestions. */
+.corrections-panel { margin-top: 0.9rem; font-size: 0.82rem; }
+.corrections-panel summary { cursor: pointer; font-weight: 600; font-size: 0.86rem; }
+.correction-row, .correction-note { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+.correction-row label, .correction-note { display: flex; flex-direction: column; gap: 0.2rem; }
+.correction-row label span, .correction-note span { font-size: 0.72rem; color: var(--muted); }
+.correction-row label.grow, .correction-note { flex: 1 1 12rem; }
+.correction-row select { min-width: 10rem; }
+.correction-history { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.correction-history li { padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.correction-history .was { text-decoration: line-through; color: var(--muted); }
+
+/* Live model behaviour, collapsed under the incident panel. */
+.model-health { margin: 0 0 1rem; font-size: 0.8rem; }
+.model-health summary { cursor: pointer; color: var(--muted); }
+.model-health .muted-note { margin: 0.3rem 0 0.5rem; font-size: 0.74rem; }
+.health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.35rem 1.25rem; margin: 0; }
+.health-grid div { display: flex; justify-content: space-between; gap: 0.75rem; border-bottom: 1px solid var(--border); padding: 0.25rem 0; }
+.health-grid dt { color: var(--muted); margin: 0; }
+.health-grid dd { margin: 0; text-align: end; overflow-wrap: anywhere; }
+
+/* Possible incidents above the ticket list. */
+.incidents-quiet { margin: 0.4rem 0 0.8rem; font-size: 0.76rem; }
+.incidents-panel {
+  margin: 0.6rem 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #92400e;
+  border-radius: 8px;
+  background: rgba(120, 53, 15, 0.15);
+}
+.incidents-panel h3 { margin: 0; font-size: 0.9rem; }
+.incidents-panel .muted-note { margin: 0.15rem 0 0.5rem; font-size: 0.74rem; }
+.incident-list { list-style: none; margin: 0; padding: 0; }
+.incident { padding: 0.45rem 0; border-top: 1px solid var(--border); font-size: 0.82rem; }
+.incident-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.incident-terms, .incident-meta, .incident-tickets { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.76rem; }
+.incident-tickets { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.sparkline { display: inline-flex; align-items: flex-end; gap: 2px; height: 1rem; margin-inline-start: auto; }
+.sparkline span { width: 5px; background: var(--border); border-radius: 1px; }
+.sparkline span.on { background: var(--warn); }
 
 .ticket-actions {
   border-top: 1px solid var(--border);

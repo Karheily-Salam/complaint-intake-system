@@ -103,7 +103,7 @@ Only once that passes, flip the provider:
 ```bash
 sed -i 's/^EMAIL_PROVIDER=mock/EMAIL_PROVIDER=imap_smtp/' backend/.env
 docker compose up -d
-docker compose logs -f backend      # expect "Email poller started (every 60s, ...)"
+docker compose logs -f backend      # expect "Email poller started (provider=imap_smtp, idle=on, ...)"
 ```
 
 Minimum settings (values are examples - see `backend/.env.example` for the
@@ -137,57 +137,40 @@ Notes:
 - To go back to a dry system at any time, set `EMAIL_PROVIDER=mock` and
   `docker compose up -d`. Nothing else changes.
 
-### Current status: staged for the Timeweb mailbox
+### Current status: live on the Timeweb mailbox
 
-`backend/.env` on the VPS is already filled in for `complaints@gateplus.ru`
-except for the two passwords, and `EMAIL_PROVIDER` is still `mock`. Confirm
-with:
+Production has been running real email since 2026-09-11:
+
+| Setting | Value |
+|---|---|
+| `EMAIL_PROVIDER` | `imap_smtp` |
+| Mailbox (polled and sending) | `complaints@startplus.tech` |
+| IMAP | `imap.timeweb.ru:993`, SSL, IDLE enabled |
+| SMTP | `smtp.timeweb.ru:465`, implicit SSL (STARTTLS off) |
+| `SUPPORT_INBOX_ADDRESS` / `MAIL_DOMAIN` | `complaints@startplus.tech` / `startplus.tech` |
+| `SMTP_FROM_ADDR` | unset, so it defaults to the polled mailbox |
+
+Confirm from the server:
 
 ```bash
-docker compose exec backend python -m scripts.check_email
-# -> FAIL  missing variables: IMAP_PASSWORD, SMTP_PASSWORD
+docker compose exec backend python -m scripts.check_email     # -> OK for IMAP and SMTP
+curl -s localhost/api/v1/health | grep email_provider          # -> "imap_smtp"
+docker compose logs backend | grep "Email poller started"
+# -> Email poller started (provider=imap_smtp, idle=on, max wait 60s)
 ```
-
-Staged values: `IMAP_HOST=imap.timeweb.ru:993` (SSL),
-`SMTP_HOST=smtp.timeweb.ru:465` (implicit SSL, STARTTLS off),
-`IMAP_USERNAME=SMTP_USERNAME=SUPPORT_INBOX_ADDRESS=complaints@gateplus.ru`,
-`MAIL_DOMAIN=gateplus.ru`, `SMTP_FROM_ADDR` unset.
 
 This is a **single-mailbox** setup: the mailbox that receives complaints also
 receives the completed tickets. Loop protection means the system never reads
 its own notifications as complaints; they arrive in that mailbox already marked
 read, under a `[Ticket NNNNNN]` subject.
 
-**Two blockers remain, both on Timeweb's side** (verified 2026-09-10):
+Two things that used to block this are resolved: `startplus.tech` replaced the
+unregistered `gateplus.ru`, and Timeweb unblocked outbound SMTP from this VPS
+after a support ticket. The mailbox password was entered directly on the server
+(`/opt/ops/scripts/set-mailbox-password.py`, which reads it without echoing and
+keeps it out of shell history) and exists only in `backend/.env`.
 
-1. **`gateplus.ru` does not resolve.** The `.ru` registry itself
-   (`a.dns.ripn.net`) returns NXDOMAIN — no NS, no MX, no SPF. Until the domain
-   is registered and delegated, no one can deliver mail to the mailbox and mail
-   sent from it will be rejected by most receivers.
-2. **SMTP submission to Timeweb is firewalled from this VPS.** All three
-   `smtp.timeweb.ru` IPs silently drop 25/465/587, while `imap.timeweb.ru:993`
-   connects fine and SMTP to unrelated providers works from the same host — so
-   this is not a VPS egress block. Needs a Timeweb support ticket.
-
-Verify both are fixed before switching:
-
-```bash
-host -t MX gateplus.ru                              # must return Timeweb MX records
-python3 -c "import socket;socket.create_connection(('smtp.timeweb.ru',465),8)"   # must not hang
-```
-
-Then enter the password and go live:
-
-```bash
-nano backend/.env      # fill IMAP_PASSWORD and SMTP_PASSWORD (never via a shell
-                       # command - it would land in shell history)
-docker compose up -d
-docker compose exec backend python -m scripts.check_email
-docker compose exec backend python -m scripts.check_email --send-test-to you@example.com
-sed -i 's/^EMAIL_PROVIDER=mock/EMAIL_PROVIDER=imap_smtp/' backend/.env
-docker compose up -d
-docker compose logs -f backend    # expect "Email poller started (every 60s, ...)"
-```
+Still outstanding: DKIM and DMARC records for `startplus.tech`, and HTTPS.
 
 ## Updating
 
@@ -196,6 +179,33 @@ cd /opt/projects/complaint-intake-system
 git pull
 docker compose up -d --build
 ```
+
+Pending Alembic migrations run at startup (`RUN_MIGRATIONS_ON_STARTUP=true`),
+so a release that adds tables needs no separate step - but **take a backup
+first** when one does:
+
+```bash
+/opt/ops/scripts/backup-sqlite.sh /opt/projects/complaint-intake-system backend /app/data/complaint_intake.db complaint-intake-system
+```
+
+### Release notes: the ML layer
+
+The release that adds machine-learning assistance (classification, extraction
+evidence, embeddings, duplicate and incident detection, staff-correction
+feedback, monitoring) needs one env line added to `backend/.env` before
+`docker compose up -d --build`:
+
+```
+# Test artefacts that must never enter an ML dataset or evaluation.
+ML_DATASET_EXCLUDED_TICKETS=["000005"]
+```
+
+Everything else uses production-safe defaults (`ML_CLASSIFIER_MODE=assist`,
+`EXTRACTION_REQUIRE_EVIDENCE=true`, `EMBEDDING_PROVIDER=hashing`,
+`ML_WORKER_ENABLED=true`). Measured backend memory with those defaults is
+~97 MB, inside the existing 384 MB container limit. Enabling the optional
+multilingual ONNX embeddings later needs that limit raised to at least 768 MB -
+see [docs/ml.md](docs/ml.md).
 
 ## Logs / troubleshooting
 

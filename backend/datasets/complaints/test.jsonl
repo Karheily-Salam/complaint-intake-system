@@ -1,0 +1,96 @@
+{"id": "en-w-01", "language": "en", "label": "withdrawal", "text": "I asked for my balance to be sent to my bank on the 3rd and I still have nothing."}
+{"id": "en-w-02", "language": "en", "label": "withdrawal", "text": "Where is my money? I requested it to my Mastercard last week."}
+{"id": "en-w-03", "language": "en", "label": "withdrawal", "text": "The payout to my Payoneer account failed but the amount is gone from my balance."}
+{"id": "en-w-04", "language": "en", "label": "withdrawal", "text": "Withdrawal rejected again, please explain why."}
+{"id": "en-w-05", "language": "en", "label": "withdrawal", "text": "I moved my profits out to my wallet and they never arrived."}
+{"id": "en-w-06", "language": "en", "label": "withdrawal", "text": "My cash out has been pending for ten days."}
+{"id": "en-w-07", "language": "en", "label": "withdrawal", "text": "I only received half of the amount I took out."}
+{"id": "en-w-08", "language": "en", "label": "withdrawal", "text": "I want my funds transferred back to my bank but the request keeps failing."}
+{"id": "en-d-01", "language": "en", "label": "deposit", "text": "I loaded 50 pounds onto my account with Apple Pay and it's not there."}
+{"id": "en-d-02", "language": "en", "label": "deposit", "text": "The top up failed but my bank already took the money."}
+{"id": "en-d-03", "language": "en", "label": "deposit", "text": "I made a deposit via SEPA on Tuesday and the balance hasn't moved."}
+{"id": "en-d-04", "language": "en", "label": "deposit", "text": "Funds I paid in by card are missing from my account."}
+{"id": "en-d-05", "language": "en", "label": "deposit", "text": "My payment into the account was taken twice."}
+{"id": "en-d-06", "language": "en", "label": "deposit", "text": "I sent bitcoin to fund my account and it's not showing after 6 confirmations."}
+{"id": "en-d-07", "language": "en", "label": "deposit", "text": "I paid but my account still shows the old balance."}
+{"id": "en-d-08", "language": "en", "label": "deposit", "text": "The money I added this morning is not reflected in my balance."}
+{"id": "en-o-01", "language": "en", "label": "other", "text": "I get an invalid session message every time I sign in."}
+{"id": "en-o-02", "language": "en", "label": "other", "text": "My documents were rejected during KYC, what is wrong with them?"}
+{"id": "en-o-03", "language": "en", "label": "other", "text": "The notification emails are coming in the wrong language."}
+{"id": "en-o-04", "language": "en", "label": "other", "text": "My account has been suspended after I changed my phone."}
+{"id": "en-o-05", "language": "en", "label": "other", "text": "The app won't open on my new iPhone."}
+{"id": "en-o-06", "language": "en", "label": "other", "text": "I did not get the welcome bonus that was advertised."}
+{"id": "en-o-07", "language": "en", "label": "other", "text": "The authenticator codes are always rejected."}
+{"id": "en-o-08", "language": "en", "label": "other", "text": "I cannot download my account statement, the page is blank."}
+{"id": "en-u-01", "language": "en", "label": "unclear", "text": "hey"}
+{"id": "en-u-02", "language": "en", "label": "unclear", "text": "I need help asap"}
+{"id": "en-u-03", "language": "en", "label": "unclear", "text": "Can you check my account please?"}
+{"id": "en-u-04", "language": "en", "label": "unclear", "text": "Hello? Anyone?"}
+{"id": "en-u-05", "language": "en", "label": "unclear", "text": "There is a problem."}
+{"id": "en-u-06", "language": "en", "label": "unclear", "text": "Please get back to me."}
+{"id": "en-u-07", "language": "en", "label": "unclear", "text": "Help"}
+{"id": "en-u-08", "language": "en", "label": "unclear", "text": "I want to report something."}
+{"id": "ru-w-01", "language": "ru", "label": "withdrawal", "text": "Попросил отправить мой баланс на банковскую карту третьего числа, до сих пор ничего."}
+{"id": "ru-w-02", "language": "ru", "label": "withdrawal", "text": "Где мои деньги? Заказывал на Mastercard на прошлой неделе."}
+{"id": "ru-w-03", "language": "ru", "label": "withdrawal", "text": "Выплата на Payoneer не прошла, но сумма пропала с баланса."}
+{"id": "ru-w-04", "language": "ru", "label": "withdrawal", "text": "Снова отклонили вывод, объясните причину."}
+{"id": "ru-w-05", "language": "ru", "label": "withdrawal", "text": "Перевёл прибыль на кошелёк, но она так и не пришла."}
+{"id": "ru-w-06", "language": "ru", "label": "withdrawal", "text": "Выплата в ожидании уже десять дней."}
+{"id": "ru-w-07", "language": "ru", "label": "withdrawal", "text": "Пришла только половина суммы, которую я выводил."}
+{"id": "ru-w-08", "language": "ru", "label": "withdrawal", "text": "Хочу вернуть средства на свой банковский счёт, но заявка не проходит."}
+{"id": "ru-d-01", "language": "ru", "label": "deposit", "text": "Закинул 50 евро на аккаунт через Apple Pay, их нет."}
+{"id": "ru-d-02", "language": "ru", "label": "deposit", "text": "Пополнение не прошло, а банк деньги уже списал."}
+{"id": "ru-d-03", "language": "ru", "label": "deposit", "text": "Сделал депозит через SEPA во вторник, баланс не изменился."}
+{"id": "ru-d-04", "language": "ru", "label": "deposit", "text": "Деньги, которые я оплатил картой, не появились на счёте."}
+{"id": "ru-d-05", "language": "ru", "label": "deposit", "text": "Платёж на счёт списали дважды."}
+{"id": "ru-d-06", "language": "ru", "label": "deposit", "text": "Отправил биткоин для пополнения, после 6 подтверждений не отображается."}
+{"id": "ru-d-07", "language": "ru", "label": "deposit", "text": "Я оплатил, но на счёте старый баланс."}
+{"id": "ru-d-08", "language": "ru", "label": "deposit", "text": "Деньги, которые я внёс утром, не отражаются на балансе."}
+{"id": "ru-o-01", "language": "ru", "label": "other", "text": "При каждом входе появляется сообщение о недействительной сессии."}
+{"id": "ru-o-02", "language": "ru", "label": "other", "text": "Мои документы отклонили на верификации, что с ними не так?"}
+{"id": "ru-o-03", "language": "ru", "label": "other", "text": "Уведомления на почту приходят не на том языке."}
+{"id": "ru-o-04", "language": "ru", "label": "other", "text": "Аккаунт приостановили после смены телефона."}
+{"id": "ru-o-05", "language": "ru", "label": "other", "text": "Приложение не открывается на новом iPhone."}
+{"id": "ru-o-06", "language": "ru", "label": "other", "text": "Я не получил приветственный бонус, который обещали в рекламе."}
+{"id": "ru-o-07", "language": "ru", "label": "other", "text": "Коды из приложения-аутентификатора всегда отклоняются."}
+{"id": "ru-o-08", "language": "ru", "label": "other", "text": "Не могу скачать выписку по счёту, страница пустая."}
+{"id": "ru-u-01", "language": "ru", "label": "unclear", "text": "привет"}
+{"id": "ru-u-02", "language": "ru", "label": "unclear", "text": "Нужна помощь срочно"}
+{"id": "ru-u-03", "language": "ru", "label": "unclear", "text": "Проверьте мой аккаунт, пожалуйста"}
+{"id": "ru-u-04", "language": "ru", "label": "unclear", "text": "Алло? Кто-нибудь?"}
+{"id": "ru-u-05", "language": "ru", "label": "unclear", "text": "Есть проблема."}
+{"id": "ru-u-06", "language": "ru", "label": "unclear", "text": "Ответьте мне, пожалуйста."}
+{"id": "ru-u-07", "language": "ru", "label": "unclear", "text": "Помогите"}
+{"id": "ru-u-08", "language": "ru", "label": "unclear", "text": "Хочу кое о чём сообщить."}
+{"id": "ar-w-01", "language": "ar", "label": "withdrawal", "text": "طلبت إرسال رصيدي إلى البنك يوم 3 وما زلت لم أستلم شيئا."}
+{"id": "ar-w-02", "language": "ar", "label": "withdrawal", "text": "أين أموالي؟ طلبتها إلى بطاقة ماستركارد الأسبوع الماضي."}
+{"id": "ar-w-03", "language": "ar", "label": "withdrawal", "text": "فشل الدفع إلى حساب بايونير لكن المبلغ اختفى من رصيدي."}
+{"id": "ar-w-04", "language": "ar", "label": "withdrawal", "text": "تم رفض السحب مرة أخرى، أرجو توضيح السبب."}
+{"id": "ar-w-05", "language": "ar", "label": "withdrawal", "text": "نقلت أرباحي إلى محفظتي ولم تصل أبدا."}
+{"id": "ar-w-06", "language": "ar", "label": "withdrawal", "text": "طلب الصرف معلق منذ عشرة أيام."}
+{"id": "ar-w-07", "language": "ar", "label": "withdrawal", "text": "استلمت نصف المبلغ الذي أخرجته فقط."}
+{"id": "ar-w-08", "language": "ar", "label": "withdrawal", "text": "أريد إعادة أموالي إلى حسابي البنكي لكن الطلب يفشل دائما."}
+{"id": "ar-d-01", "language": "ar", "label": "deposit", "text": "شحنت 50 يورو إلى حسابي عبر أبل باي ولم تظهر."}
+{"id": "ar-d-02", "language": "ar", "label": "deposit", "text": "فشل شحن الرصيد لكن البنك خصم المبلغ."}
+{"id": "ar-d-03", "language": "ar", "label": "deposit", "text": "قمت بالإيداع عبر SEPA يوم الثلاثاء والرصيد لم يتغير."}
+{"id": "ar-d-04", "language": "ar", "label": "deposit", "text": "الأموال التي دفعتها بالبطاقة غير موجودة في حسابي."}
+{"id": "ar-d-05", "language": "ar", "label": "deposit", "text": "تم خصم دفعتي إلى الحساب مرتين."}
+{"id": "ar-d-06", "language": "ar", "label": "deposit", "text": "أرسلت بيتكوين لتمويل حسابي ولم يظهر بعد 6 تأكيدات."}
+{"id": "ar-d-07", "language": "ar", "label": "deposit", "text": "دفعت لكن حسابي ما زال يظهر الرصيد القديم."}
+{"id": "ar-d-08", "language": "ar", "label": "deposit", "text": "المال الذي أضفته صباح اليوم لا يظهر في رصيدي."}
+{"id": "ar-o-01", "language": "ar", "label": "other", "text": "تظهر رسالة جلسة غير صالحة في كل مرة أسجل فيها الدخول."}
+{"id": "ar-o-02", "language": "ar", "label": "other", "text": "تم رفض مستنداتي أثناء التحقق، ما المشكلة فيها؟"}
+{"id": "ar-o-03", "language": "ar", "label": "other", "text": "رسائل التنبيه تصلني بلغة خاطئة."}
+{"id": "ar-o-04", "language": "ar", "label": "other", "text": "تم تعليق حسابي بعد أن غيرت هاتفي."}
+{"id": "ar-o-05", "language": "ar", "label": "other", "text": "التطبيق لا يفتح على هاتفي الآيفون الجديد."}
+{"id": "ar-o-06", "language": "ar", "label": "other", "text": "لم أحصل على مكافأة الترحيب المعلن عنها."}
+{"id": "ar-o-07", "language": "ar", "label": "other", "text": "رموز تطبيق المصادقة مرفوضة دائما."}
+{"id": "ar-o-08", "language": "ar", "label": "other", "text": "لا أستطيع تنزيل كشف الحساب، الصفحة فارغة."}
+{"id": "ar-u-01", "language": "ar", "label": "unclear", "text": "اهلا"}
+{"id": "ar-u-02", "language": "ar", "label": "unclear", "text": "أحتاج مساعدة بسرعة"}
+{"id": "ar-u-03", "language": "ar", "label": "unclear", "text": "هل يمكنكم مراجعة حسابي من فضلكم؟"}
+{"id": "ar-u-04", "language": "ar", "label": "unclear", "text": "ألو؟ أحد هنا؟"}
+{"id": "ar-u-05", "language": "ar", "label": "unclear", "text": "توجد مشكلة."}
+{"id": "ar-u-06", "language": "ar", "label": "unclear", "text": "أرجو الرد علي."}
+{"id": "ar-u-07", "language": "ar", "label": "unclear", "text": "النجدة"}
+{"id": "ar-u-08", "language": "ar", "label": "unclear", "text": "أريد الإبلاغ عن شيء."}

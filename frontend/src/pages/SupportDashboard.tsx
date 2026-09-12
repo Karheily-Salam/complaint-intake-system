@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, staffApi } from "@/api/client";
+import { CorrectionsPanel } from "@/components/ml/CorrectionsPanel";
+import { IncidentsPanel } from "@/components/ml/IncidentsPanel";
+import { ModelHealthPanel } from "@/components/ml/ModelHealthPanel";
+import { SimilarTickets } from "@/components/ml/SimilarTickets";
 import { TicketBrowser } from "@/components/tickets/TicketBrowser";
 import { TicketDetailPanel } from "@/components/tickets/TicketDetailPanel";
 import {
@@ -8,7 +12,7 @@ import {
   type TicketQueryState,
 } from "@/components/tickets/ticketGroups";
 import { useI18n } from "@/i18n";
-import { buildTypeLookup, replySubject, statusLabel } from "@/lib/labels";
+import { buildLabelLookup, buildTypeLookup, replySubject, statusLabel } from "@/lib/labels";
 import {
   StaffRequestError,
   clearStaffKey,
@@ -63,6 +67,7 @@ export function SupportDashboard() {
   const [busy, setBusy] = useState(false);
 
   const typeLabel = useMemo(() => buildTypeLookup(schemas, t), [schemas, t]);
+  const fieldLabel = useMemo(() => buildLabelLookup(schemas, t), [schemas, t]);
   const types = useMemo(() => orderSchemas(schemas).map((s) => s.type), [schemas]);
   // A stable dependency for the load effect: the array identity changes on
   // every render, the joined string only when the schema set actually changes.
@@ -224,6 +229,25 @@ export function SupportDashboard() {
             </select>
           </label>
         }
+        insights={
+          <>
+            <SimilarTickets
+              staffKey={key}
+              reference={selected.reference}
+              typeLabel={typeLabel}
+              fieldLabel={fieldLabel}
+              onOpen={openTicket}
+            />
+            <CorrectionsPanel
+              staffKey={key}
+              ticket={selected}
+              schemas={schemas}
+              typeLabel={typeLabel}
+              fieldLabel={fieldLabel}
+              onCorrected={setSelected}
+            />
+          </>
+        }
         actions={
           <StaffReplyActions
             ticket={selected}
@@ -250,7 +274,13 @@ export function SupportDashboard() {
       pageSize={PAGE_SIZE}
       busy={busy}
       loaded={loaded}
-      notice={authState === "error" ? <p className="error">{authMessage}</p> : null}
+      notice={
+        <>
+          {authState === "error" && <p className="error">{authMessage}</p>}
+          <IncidentsPanel staffKey={key} typeLabel={typeLabel} onOpen={openTicket} />
+          <ModelHealthPanel staffKey={key} />
+        </>
+      }
       emptyMessage={t.dashboard.empty}
       onQueryChange={setQuery}
       onOpen={openTicket}

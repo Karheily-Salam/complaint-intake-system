@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useI18n } from "@/i18n";
 import { collectedFields, formatTimestamp, type LabelLookup } from "@/lib/labels";
-import type { ComplaintSchema, MessageOut, TicketDetail } from "@/types/api";
+import type { CollectedField, ComplaintSchema, MessageOut, TicketDetail } from "@/types/api";
 
 /**
  * Collected fields the detail table leaves out.
@@ -24,6 +24,8 @@ export interface TicketDetailPanelProps {
   statusControl?: ReactNode;
   /** Staff: the reply button and composer. Demo: a note explaining the limit. */
   actions?: ReactNode;
+  /** Staff only: model suggestions (similar tickets, corrections). Advisory, never actions. */
+  insights?: ReactNode;
 }
 
 /**
@@ -47,6 +49,7 @@ export function TicketDetailPanel({
   backLabel,
   statusControl,
   actions,
+  insights,
 }: TicketDetailPanelProps) {
   const { t, lang } = useI18n();
   const fields = (ticket.structured_data?.fields as Record<string, string> | undefined) ?? {};
@@ -56,6 +59,11 @@ export function TicketDetailPanel({
     [schemas, ticket, t],
   );
   const messages = ticket.conversation?.messages ?? [];
+  const evidence = useMemo(() => {
+    const byKey: Record<string, CollectedField> = {};
+    for (const field of ticket.conversation?.complaint?.fields ?? []) byKey[field.key] = field;
+    return byKey;
+  }, [ticket]);
 
   return (
     <div className="support-dash ticket-detail">
@@ -83,11 +91,16 @@ export function TicketDetailPanel({
           {rows.map((row) => (
             <div className="detail-row" key={row.key}>
               <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
+              <dd>
+                {row.value}
+                <FieldEvidence field={evidence[row.key]} value={row.value} />
+              </dd>
             </div>
           ))}
         </dl>
       )}
+
+      {insights && <section className="ticket-insights">{insights}</section>}
 
       {actions && <section className="ticket-actions">{actions}</section>}
 
@@ -109,6 +122,32 @@ export function TicketDetailPanel({
         )}
       </details>
     </div>
+  );
+}
+
+/**
+ * Where a value came from in the customer's email.
+ *
+ * A value found word for word gets a small check mark (the quote would only
+ * repeat it); anything matched more loosely - a written date turned into ISO,
+ * an ID with different separators - shows the original words, so an agent can
+ * see at a glance why the system believes it.
+ */
+function FieldEvidence({ field, value }: { field?: CollectedField; value: string }) {
+  const { t } = useI18n();
+  const text = field?.evidence_text;
+  if (!text) return null;
+  if (text.trim().toLowerCase() === value.trim().toLowerCase()) {
+    return (
+      <span className="evidence-mark" title={t.tickets.evidenceVerbatim} aria-label={t.tickets.evidenceVerbatim}>
+        ✓
+      </span>
+    );
+  }
+  return (
+    <span className="evidence-quote">
+      {t.tickets.evidenceSource} <q>{text}</q>
+    </span>
   );
 }
 

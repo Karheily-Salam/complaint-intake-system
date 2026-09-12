@@ -16,7 +16,10 @@ FastAPI + Pydantic + SQLAlchemy 2.0 + SQLite + Alembic.
 | `app/conversation/engine.py` | the deterministic multi-turn Conversation Engine (pure, no I/O) |
 | `app/conversation/state.py` | `ConversationState` / `EngineOutcome` value objects |
 | `app/conversation/prompts/` | Jinja prompt templates (presentation only) |
-| `app/ai/` | `AIProvider` abstraction + `rule_based` / `ollama` providers + factory |
+| `app/ai/` | `AIProvider` abstraction + `rule_based` / `ollama` / `hybrid` providers + factory |
+| `app/ml/` | classifier, features, embeddings, similarity, incidents, feedback, evaluation, monitoring, PII masking |
+| `app/domain/evidence.py` | proves every extracted value against the customer's own words |
+| `datasets/` | hand-written EN/RU/AR datasets (training + held-out test) |
 | `app/email/` | `EmailProvider` abstraction + `MockEmailProvider` + factory |
 | `app/services/` | orchestration: `IntakeService`, `TicketService`, `ConversationService` |
 | `app/api/routes/` | HTTP endpoints |
@@ -56,6 +59,23 @@ schema "what fields are required?" and collects them. See
   field definitions, instructed never to invent values. If Ollama is unreachable
   it falls back to `rule_based` (`OLLAMA_FALLBACK_TO_RULE_BASED=true`, default) or
   raises `AIProviderError`.
+
+Whichever is selected is then wrapped by `HybridAIProvider` unless
+`ML_CLASSIFIER_MODE=off`: keyword rules decide first, the calibrated classifier
+only fills in what they miss, and everything else is delegated untouched. See
+[docs/ml.md](../docs/ml.md).
+
+### ML scripts
+
+| Command | What it does |
+|---|---|
+| `python scripts/train_classifier.py` | retrains the complaint-type classifier from `datasets/complaints/train.jsonl` and rewrites its artifact |
+| `python scripts/evaluate_ml.py` | runs the held-out sets through the real code paths and regenerates `docs/ml/evaluation.{md,json}` |
+| `python scripts/download_embedding_model.py` | fetches the optional multilingual ONNX encoder (pinned by SHA-256) |
+| `python scripts/export_training_feedback.py` | exports staff corrections as a masked JSONL dataset for review |
+
+A test fails if `datasets/complaints/train.jsonl` changes without the model
+being retrained, or if the committed evaluation report goes stale.
 
 ## Language
 

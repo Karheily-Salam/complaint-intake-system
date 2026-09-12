@@ -1,0 +1,51 @@
+{
+  "cross_validation": {
+    "macro_f1": 0.813,
+    "nll_calibrated": 0.5163,
+    "nll_uncalibrated": 0.586
+  },
+  "labels": [
+    "deposit",
+    "other",
+    "unclear",
+    "withdrawal"
+  ],
+  "model_name": "complaint-type-linear",
+  "semver": "1.0.0",
+  "temperature": 0.5952702883262638,
+  "threshold": 0.82,
+  "training": {
+    "by_label": {
+      "deposit": 96,
+      "other": 96,
+      "unclear": 78,
+      "withdrawal": 96
+    },
+    "by_language": {
+      "ar": 122,
+      "en": 122,
+      "ru": 122
+    },
+    "dataset_sha256": "21accd81547b9f3fc2167b2a935bc7431db6703de961f99ef6f8b29834373193",
+    "epochs": 300,
+    "examples": 366,
+    "folds": 5,
+    "l2": 0.0001,
+    "l2_grid": [
+      0.0001,
+      0.001,
+      0.01
+    ],
+    "target_selective_accuracy": 0.9
+  },
+  "vectorizer": {
+    "char_ngrams": [
+      2,
+      4
+    ],
+    "dim": 32768,
+    "kind": "hashing"
+  },
+  "version": "1.0.0+70050073",
+  "weights_sha256": "70050073cd8f33be738381816aaca8dc44ae7397cfbf41b93c956692152414ac"
+}

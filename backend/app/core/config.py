@@ -53,6 +53,39 @@ class Settings(BaseSettings):
     # fall back to the rule-based provider; if false, raise a clear provider error.
     ollama_fallback_to_rule_based: bool = True
 
+    # ---- ML assistance ----
+    # How the calibrated complaint-type classifier takes part (see
+    # app/ai/providers/hybrid.py):
+    #   off    - not loaded; classification is the provider's alone
+    #   shadow - predicts and records, never affects the decision
+    #   assist - used only when the keyword rules find nothing and the model
+    #            is confident; keyword matches always win
+    ml_classifier_mode: str = "assist"
+    # Overrides the abstention threshold stored with the model artifact
+    # (chosen there from the out-of-fold risk-coverage curve). Leave unset
+    # unless an evaluation says otherwise.
+    ml_classifier_threshold: float | None = None
+    # Refuse any extracted value that no span of the customer's message
+    # supports (see app/domain/evidence.py). Turning this off records the
+    # evidence where found but accepts unsupported values - only for
+    # diagnosing an extractor, never as a production setting.
+    extraction_require_evidence: bool = True
+    # Text embeddings for similar-ticket and incident detection (see
+    # app/ml/embeddings.py): "hashing" (numpy only, the default) or "onnx"
+    # (multilingual-e5-small; needs the ml-onnx extra, the downloaded model,
+    # and roughly 250 MB more memory for the backend container).
+    embedding_provider: str = "hashing"
+    # Where the ONNX model files live; defaults to backend/models/multilingual-e5-small.
+    embedding_model_dir: str | None = None
+    # Background ML work (embedding new complaints) runs off the request and
+    # email paths, every this many seconds. Disabled -> embeddings are only
+    # computed on demand, when a ticket's similar tickets are requested.
+    ml_worker_enabled: bool = True
+    ml_worker_interval_seconds: int = 30
+    # Ticket references that must never enter an ML dataset or evaluation -
+    # test artefacts on a live system. JSON list, e.g. '["000005"]'.
+    ml_dataset_excluded_tickets: list[str] = Field(default_factory=list)
+
     # ---- Conversation engine ----
     # Below this classifier confidence the engine treats the complaint type as
     # not yet known and asks the customer to clarify.

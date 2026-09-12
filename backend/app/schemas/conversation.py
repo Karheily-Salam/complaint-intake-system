@@ -33,6 +33,12 @@ class CollectedField(ORMModel):
     source: str
     confidence: float | None
     validation_error: str | None
+    # Where the value came from in the customer's message (see
+    # app.domain.evidence). Null for summaries and staff corrections.
+    evidence_text: str | None = None
+    evidence_start: int | None = None
+    evidence_end: int | None = None
+    evidence_method: str | None = None
 
 
 class ComplaintOut(ORMModel):

@@ -2,3 +2,8 @@
 *.png binary
 *.jpg binary
 *.ico binary
+# ML datasets are hashed and the hash is recorded in the model artifact and the
+# evaluation report, so their bytes must be identical on every checkout.
+*.jsonl text eol=lf
+# Model weights: a zip, never line-ending translated.
+*.npz binary

@@ -12,6 +12,23 @@ from app.core.config import settings
 
 @lru_cache
 def get_ai_provider() -> AIProvider:
+    base = _base_provider()
+    mode = settings.ml_classifier_mode.lower()
+    if mode == "off":
+        return base
+
+    from app.ai.providers.hybrid import HybridAIProvider
+    from app.ml.classifier import get_classifier
+
+    return HybridAIProvider(
+        base,
+        get_classifier(),
+        mode=mode,
+        threshold=settings.ml_classifier_threshold,
+    )
+
+
+def _base_provider() -> AIProvider:
     provider = settings.ai_provider.lower()
 
     if provider == "rule_based":

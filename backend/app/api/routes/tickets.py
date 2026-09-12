@@ -14,7 +14,15 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.api.deps import DbDep
 from app.api.security import StaffAuth
+from app.ml.similarity import find_similar
 from app.repositories.ticket_repo import TicketQuery
+from app.schemas.ml import (
+    CorrectionIn,
+    CorrectionOut,
+    FeedbackOut,
+    SimilarTicketOut,
+    SimilarTicketsOut,
+)
 from app.schemas.ticket import (
     TicketDetail,
     TicketReplyIn,
@@ -22,6 +30,7 @@ from app.schemas.ticket import (
     TicketStatusUpdate,
     TicketSummary,
 )
+from app.services.correction_service import CorrectionError, CorrectionService
 from app.services.ticket_reply_service import ReplyNotPossible, TicketReplyService
 from app.services.ticket_service import TicketService
 
@@ -81,6 +90,72 @@ def get_ticket(reference: str, db: DbDep) -> TicketDetail:
     if ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket  # type: ignore[return-value]
+
+
+@router.get("/{reference}/similar", response_model=SimilarTicketsOut)
+def similar_tickets(
+    reference: str,
+    db: DbDep,
+    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+) -> SimilarTicketsOut:
+    """Tickets that look like this one, and which may be duplicates.
+
+    Suggestions only: nothing is merged or changed. Computing them may store
+    this ticket's embedding if the background worker has not yet, which is
+    derived data, never ticket state.
+    """
+    ticket = TicketService(db).get_ticket(reference)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    result = find_similar(db, ticket, limit=limit)
+    db.commit()
+    return SimilarTicketsOut(
+        reference=ticket.reference,
+        model_version=result.model_version,
+        similar_threshold=result.similar_threshold,
+        duplicate_threshold=result.duplicate_threshold,
+        items=[SimilarTicketOut(**vars(item)) for item in result.items],
+    )
+
+
+@router.post("/{reference}/corrections", response_model=CorrectionOut, status_code=201)
+def correct_ticket(reference: str, payload: CorrectionIn, db: DbDep) -> CorrectionOut:
+    """Correct the complaint type or one collected field, as a staff decision.
+
+    The correction is validated against the complaint schema and applied to
+    the ticket (never its status), and the original prediction is kept next
+    to the corrected value as training feedback. No model is retrained.
+    """
+    service = CorrectionService(db)
+    try:
+        if payload.kind == "classification":
+            result = service.correct_classification(
+                reference, payload.corrected_value.strip(), payload.note
+            )
+        else:
+            if not payload.field_key:
+                raise CorrectionError("field_key is required for a field correction")
+            result = service.correct_field(
+                reference, payload.field_key, payload.corrected_value, payload.note
+            )
+    except CorrectionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    ticket, feedback = result
+    fresh = TicketService(db).get_ticket(ticket.reference)
+    return CorrectionOut(
+        feedback=FeedbackOut.model_validate(feedback),
+        ticket=TicketDetail.model_validate(fresh),
+    )
+
+
+@router.get("/{reference}/corrections", response_model=list[FeedbackOut])
+def ticket_corrections(reference: str, db: DbDep) -> list[FeedbackOut]:
+    items = CorrectionService(db).for_ticket(reference)
+    if items is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return [FeedbackOut.model_validate(item) for item in items]
 
 
 @router.post("/{reference}/reply", response_model=TicketReplyOut)

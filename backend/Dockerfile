@@ -25,10 +25,14 @@ COPY alembic.ini ./
 # Operator scripts that are meant to be run inside the container:
 #   check_email.py - mailbox pre-flight, before switching to a real mailbox
 #   seed_demo.py   - populate/reset the demo dataset (demo-scoped rows only)
+#   download_embedding_model.py   - fetch the optional multilingual ONNX model
+#   export_training_feedback.py   - export staff corrections, masked, for review
 # Copied file-by-file rather than the whole scripts/ directory, to keep
 # scripts/reset_db.py - which drops the entire database - out of production.
 COPY scripts/check_email.py ./scripts/check_email.py
 COPY scripts/seed_demo.py ./scripts/seed_demo.py
+COPY scripts/download_embedding_model.py ./scripts/download_embedding_model.py
+COPY scripts/export_training_feedback.py ./scripts/export_training_feedback.py
 RUN pip install -e .
 
 # Run as a non-root user. /app/data is where the persistent SQLite database

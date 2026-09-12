@@ -14,6 +14,7 @@ from app.core.logging import configure_logging, get_logger
 from app.core.migrations import run_migrations
 from app.domain.complaint_schemas.registry import get_registry
 from app.email.factory import get_email_provider
+from app.services import ml_worker
 from app.services.email_poller import EmailPoller
 
 logger = get_logger(__name__)
@@ -56,9 +57,17 @@ async def lifespan(app: FastAPI):
             )
         poller_task = asyncio.create_task(EmailPoller().run_forever())
 
+    ml_task: asyncio.Task | None = None
+    if settings.ml_worker_enabled:
+        ml_task = asyncio.create_task(ml_worker.run_forever())
+
     try:
         yield
     finally:
+        if ml_task is not None:
+            ml_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await ml_task
         if poller_task is not None:
             # Stop the loop first, so no new cycle starts, then release the
             # provider. Cancelling ends the awaiting task immediately, but a

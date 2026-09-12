@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from app.db.base_class import Base  # noqa: F401
 from app.db.models.complaint import Complaint  # noqa: F401
+from app.db.models.complaint_embedding import ComplaintEmbedding  # noqa: F401
 from app.db.models.complaint_field import ComplaintField  # noqa: F401
 from app.db.models.conversation import Conversation  # noqa: F401
 from app.db.models.customer import Customer  # noqa: F401
 from app.db.models.email_log import EmailLog  # noqa: F401
 from app.db.models.message import Message  # noqa: F401
+from app.db.models.ml_feedback import MLFeedback  # noqa: F401
+from app.db.models.ml_prediction import MLPrediction  # noqa: F401
 from app.db.models.ticket import Ticket  # noqa: F401

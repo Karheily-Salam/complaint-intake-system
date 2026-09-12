@@ -1,0 +1,366 @@
+{"id": "en-w-01", "language": "en", "label": "withdrawal", "text": "I requested a withdrawal three days ago and the money still hasn't reached my bank account."}
+{"id": "en-w-02", "language": "en", "label": "withdrawal", "text": "My payout to my Visa card is stuck in pending status."}
+{"id": "en-w-03", "language": "en", "label": "withdrawal", "text": "I tried to cash out my balance but I keep getting an error."}
+{"id": "en-w-04", "language": "en", "label": "withdrawal", "text": "I asked to take my money out of the platform on Monday and nothing has arrived."}
+{"id": "en-w-05", "language": "en", "label": "withdrawal", "text": "The funds I moved from my account to my bank never showed up on my statement."}
+{"id": "en-w-06", "language": "en", "label": "withdrawal", "text": "Why is my withdrawal request still processing after a week?"}
+{"id": "en-w-07", "language": "en", "label": "withdrawal", "text": "I want to get my winnings sent to my PayPal but the transfer was rejected."}
+{"id": "en-w-08", "language": "en", "label": "withdrawal", "text": "Money was deducted from my balance for a withdrawal but my wallet received nothing."}
+{"id": "en-w-09", "language": "en", "label": "withdrawal", "text": "I sent my earnings to my crypto wallet and the transaction is not confirmed."}
+{"id": "en-w-10", "language": "en", "label": "withdrawal", "text": "You cancelled my payout without any explanation."}
+{"id": "en-w-11", "language": "en", "label": "withdrawal", "text": "My bank says there is no incoming transfer from you, although my balance was debited."}
+{"id": "en-w-12", "language": "en", "label": "withdrawal", "text": "The amount I received in my bank is less than what I withdrew."}
+{"id": "en-w-13", "language": "en", "label": "withdrawal", "text": "I cannot withdraw, the button is greyed out."}
+{"id": "en-w-14", "language": "en", "label": "withdrawal", "text": "I transferred my profit to my card five business days ago, where is it?"}
+{"id": "en-w-15", "language": "en", "label": "withdrawal", "text": "The payout was sent to the wrong IBAN, please help me recover it."}
+{"id": "en-w-16", "language": "en", "label": "withdrawal", "text": "I requested 500 USD out to my Skrill account, the status says completed but I got nothing."}
+{"id": "en-w-17", "language": "en", "label": "withdrawal", "text": "The cash-out limit blocked me from taking my funds out."}
+{"id": "en-w-18", "language": "en", "label": "withdrawal", "text": "My request to send money back to my bank was declined twice."}
+{"id": "en-w-19", "language": "en", "label": "withdrawal", "text": "I'm still waiting for the money I asked to be paid out to my account."}
+{"id": "en-w-20", "language": "en", "label": "withdrawal", "text": "Your system shows my withdrawal as successful but my card has not been credited."}
+{"id": "en-w-21", "language": "en", "label": "withdrawal", "text": "My money has not landed in my bank account since I requested it on the 5th."}
+{"id": "en-w-22", "language": "en", "label": "withdrawal", "text": "I asked you to send my balance to my Revolut and it never came."}
+{"id": "en-w-23", "language": "en", "label": "withdrawal", "text": "The transfer out of my account says failed but the funds are gone."}
+{"id": "en-w-24", "language": "en", "label": "withdrawal", "text": "I cannot get my money out, the request form keeps timing out."}
+{"id": "en-w-25", "language": "en", "label": "withdrawal", "text": "Please process my payout, it has been two weeks."}
+{"id": "en-w-26", "language": "en", "label": "withdrawal", "text": "My withdrawal was approved but the bank has not received anything."}
+{"id": "en-w-27", "language": "en", "label": "withdrawal", "text": "I requested my profits to my Neteller wallet and got only part of it."}
+{"id": "en-w-28", "language": "en", "label": "withdrawal", "text": "Every time I try to send funds to my card the request is cancelled."}
+{"id": "en-w-29", "language": "en", "label": "withdrawal", "text": "The amount taken from my balance for the payout is higher than what I asked for."}
+{"id": "en-w-30", "language": "en", "label": "withdrawal", "text": "I was told my money would arrive within 24 hours after requesting it, it's been 5 days."}
+{"id": "en-w-31", "language": "en", "label": "withdrawal", "text": "I requested to move my money to my bank but it went to an old closed account."}
+{"id": "en-w-32", "language": "en", "label": "withdrawal", "text": "The status of my cash-out request changed to reversed, what does that mean?"}
+{"id": "en-d-01", "language": "en", "label": "deposit", "text": "I deposited 200 euros by bank transfer yesterday and my balance is still zero."}
+{"id": "en-d-02", "language": "en", "label": "deposit", "text": "I topped up my account with my card but the money isn't showing."}
+{"id": "en-d-03", "language": "en", "label": "deposit", "text": "My card was charged but the funds never appeared in my account."}
+{"id": "en-d-04", "language": "en", "label": "deposit", "text": "I sent money to my account via PayPal two days ago and it's not credited."}
+{"id": "en-d-05", "language": "en", "label": "deposit", "text": "The payment went through on my side but my balance did not change."}
+{"id": "en-d-06", "language": "en", "label": "deposit", "text": "I added funds using my e-wallet and nothing arrived."}
+{"id": "en-d-07", "language": "en", "label": "deposit", "text": "My deposit has been stuck in pending for 48 hours."}
+{"id": "en-d-08", "language": "en", "label": "deposit", "text": "I paid 100 dollars into my account but only 90 was credited."}
+{"id": "en-d-09", "language": "en", "label": "deposit", "text": "I transferred crypto to the address you gave me and it hasn't been credited."}
+{"id": "en-d-10", "language": "en", "label": "deposit", "text": "I was charged twice for a single top-up."}
+{"id": "en-d-11", "language": "en", "label": "deposit", "text": "I funded my account through Neteller and the balance is still the same."}
+{"id": "en-d-12", "language": "en", "label": "deposit", "text": "The money left my bank account but it's not in my trading balance."}
+{"id": "en-d-13", "language": "en", "label": "deposit", "text": "I made a payment to load my account and got an error, yet my card was debited."}
+{"id": "en-d-14", "language": "en", "label": "deposit", "text": "I sent USDT on the wrong network when funding my account."}
+{"id": "en-d-15", "language": "en", "label": "deposit", "text": "My bank transfer to fund the account was returned."}
+{"id": "en-d-16", "language": "en", "label": "deposit", "text": "I put money into my account this morning and can't see it."}
+{"id": "en-d-17", "language": "en", "label": "deposit", "text": "The payment page accepted my payment but my wallet here shows no funds."}
+{"id": "en-d-18", "language": "en", "label": "deposit", "text": "Please credit my account, I paid by Visa on Friday."}
+{"id": "en-d-19", "language": "en", "label": "deposit", "text": "I want to add money but every card payment is declined."}
+{"id": "en-d-20", "language": "en", "label": "deposit", "text": "My balance didn't increase after I sent the transfer."}
+{"id": "en-d-21", "language": "en", "label": "deposit", "text": "I paid into my account with Google Pay and the money is missing."}
+{"id": "en-d-22", "language": "en", "label": "deposit", "text": "My deposit shows as failed but the bank took the funds."}
+{"id": "en-d-23", "language": "en", "label": "deposit", "text": "I made a transfer to top up but the account balance is unchanged."}
+{"id": "en-d-24", "language": "en", "label": "deposit", "text": "The card payment to fund my account was approved yet nothing was added."}
+{"id": "en-d-25", "language": "en", "label": "deposit", "text": "I loaded my wallet here with 300 dollars and see nothing."}
+{"id": "en-d-26", "language": "en", "label": "deposit", "text": "The funds I sent to my account last night are still not credited."}
+{"id": "en-d-27", "language": "en", "label": "deposit", "text": "I paid with my Mastercard and only part of the amount reached my balance."}
+{"id": "en-d-28", "language": "en", "label": "deposit", "text": "My SEPA transfer to the account arrived at your bank but my balance is empty."}
+{"id": "en-d-29", "language": "en", "label": "deposit", "text": "I added money with a payment voucher, the code was not accepted but the money was taken."}
+{"id": "en-d-30", "language": "en", "label": "deposit", "text": "My payment into the account was debited from my card three times."}
+{"id": "en-d-31", "language": "en", "label": "deposit", "text": "The system says my deposit has been under review for 3 days."}
+{"id": "en-d-32", "language": "en", "label": "deposit", "text": "I transferred money from my bank to this account and it disappeared."}
+{"id": "en-o-01", "language": "en", "label": "other", "text": "I can't log in to my account, it says my password is wrong even after resetting it."}
+{"id": "en-o-02", "language": "en", "label": "other", "text": "The app crashes every time I open the settings page."}
+{"id": "en-o-03", "language": "en", "label": "other", "text": "My account was blocked and nobody told me why."}
+{"id": "en-o-04", "language": "en", "label": "other", "text": "I uploaded my passport for verification a week ago and it's still under review."}
+{"id": "en-o-05", "language": "en", "label": "other", "text": "I'm not receiving the two-factor authentication codes by SMS."}
+{"id": "en-o-06", "language": "en", "label": "other", "text": "The website keeps logging me out after a few seconds."}
+{"id": "en-o-07", "language": "en", "label": "other", "text": "I want to change the email address on my profile but the form gives an error."}
+{"id": "en-o-08", "language": "en", "label": "other", "text": "My bonus was not applied even though I met all the conditions."}
+{"id": "en-o-09", "language": "en", "label": "other", "text": "Your support chat never answers, I've been waiting for hours."}
+{"id": "en-o-10", "language": "en", "label": "other", "text": "I would like to close my account and delete my personal data."}
+{"id": "en-o-11", "language": "en", "label": "other", "text": "The mobile app is stuck on the loading screen since the last update."}
+{"id": "en-o-12", "language": "en", "label": "other", "text": "My identity verification was rejected without a reason."}
+{"id": "en-o-13", "language": "en", "label": "other", "text": "I was charged a monthly fee I never agreed to."}
+{"id": "en-o-14", "language": "en", "label": "other", "text": "The charts on the trading page are not loading."}
+{"id": "en-o-15", "language": "en", "label": "other", "text": "I forgot my password and the reset link is broken."}
+{"id": "en-o-16", "language": "en", "label": "other", "text": "Someone logged into my account from another country, I think I was hacked."}
+{"id": "en-o-17", "language": "en", "label": "other", "text": "The promo code I received says it is invalid."}
+{"id": "en-o-18", "language": "en", "label": "other", "text": "I can't update my phone number in the profile settings."}
+{"id": "en-o-19", "language": "en", "label": "other", "text": "The page shows error 500 when I try to open my transaction history."}
+{"id": "en-o-20", "language": "en", "label": "other", "text": "My referral rewards disappeared from my profile."}
+{"id": "en-o-21", "language": "en", "label": "other", "text": "I can't reset my password because I don't get the email."}
+{"id": "en-o-22", "language": "en", "label": "other", "text": "My account is locked after too many login attempts."}
+{"id": "en-o-23", "language": "en", "label": "other", "text": "The app shows a blank white screen on Android."}
+{"id": "en-o-24", "language": "en", "label": "other", "text": "I want to update my home address in my profile."}
+{"id": "en-o-25", "language": "en", "label": "other", "text": "My verification selfie keeps getting rejected."}
+{"id": "en-o-26", "language": "en", "label": "other", "text": "The website is extremely slow and times out."}
+{"id": "en-o-27", "language": "en", "label": "other", "text": "I received a suspicious email pretending to be from you."}
+{"id": "en-o-28", "language": "en", "label": "other", "text": "The language setting keeps switching back to English."}
+{"id": "en-o-29", "language": "en", "label": "other", "text": "I was logged out and now my username is not recognised."}
+{"id": "en-o-30", "language": "en", "label": "other", "text": "The loyalty points I earned are not showing."}
+{"id": "en-o-31", "language": "en", "label": "other", "text": "I cannot open any page, it says access denied."}
+{"id": "en-o-32", "language": "en", "label": "other", "text": "My account shows the wrong date of birth and I can't edit it."}
+{"id": "en-u-01", "language": "en", "label": "unclear", "text": "Hello"}
+{"id": "en-u-02", "language": "en", "label": "unclear", "text": "Hi, I have a problem."}
+{"id": "en-u-03", "language": "en", "label": "unclear", "text": "Please help me."}
+{"id": "en-u-04", "language": "en", "label": "unclear", "text": "Can someone call me?"}
+{"id": "en-u-05", "language": "en", "label": "unclear", "text": "Urgent!!!"}
+{"id": "en-u-06", "language": "en", "label": "unclear", "text": "Is anyone there?"}
+{"id": "en-u-07", "language": "en", "label": "unclear", "text": "I need assistance with my account."}
+{"id": "en-u-08", "language": "en", "label": "unclear", "text": "Good morning, I have a question."}
+{"id": "en-u-09", "language": "en", "label": "unclear", "text": "Thanks"}
+{"id": "en-u-10", "language": "en", "label": "unclear", "text": "Something is wrong."}
+{"id": "en-u-11", "language": "en", "label": "unclear", "text": "Please contact me as soon as possible."}
+{"id": "en-u-12", "language": "en", "label": "unclear", "text": "I have an issue, can you help?"}
+{"id": "en-u-13", "language": "en", "label": "unclear", "text": "?"}
+{"id": "en-u-14", "language": "en", "label": "unclear", "text": "Hello, are you there"}
+{"id": "en-u-15", "language": "en", "label": "unclear", "text": "It's not working."}
+{"id": "en-u-16", "language": "en", "label": "unclear", "text": "I need to talk to a manager."}
+{"id": "en-u-17", "language": "en", "label": "unclear", "text": "Reply please"}
+{"id": "en-u-18", "language": "en", "label": "unclear", "text": "I have a complaint."}
+{"id": "en-u-19", "language": "en", "label": "unclear", "text": "hi there"}
+{"id": "en-u-20", "language": "en", "label": "unclear", "text": "Good evening"}
+{"id": "en-u-21", "language": "en", "label": "unclear", "text": "I have a question about my account."}
+{"id": "en-u-22", "language": "en", "label": "unclear", "text": "Please answer me."}
+{"id": "en-u-23", "language": "en", "label": "unclear", "text": "Can I get some help?"}
+{"id": "en-u-24", "language": "en", "label": "unclear", "text": "ok"}
+{"id": "en-u-25", "language": "en", "label": "unclear", "text": "I'm writing to you again."}
+{"id": "en-u-26", "language": "en", "label": "unclear", "text": "Is this the support email?"}
+{"id": "ru-w-01", "language": "ru", "label": "withdrawal", "text": "Я подал заявку на вывод средств три дня назад, деньги так и не пришли на карту."}
+{"id": "ru-w-02", "language": "ru", "label": "withdrawal", "text": "Выплата на мою карту висит в статусе «в обработке» уже неделю."}
+{"id": "ru-w-03", "language": "ru", "label": "withdrawal", "text": "Не могу вывести деньги, выдаёт ошибку."}
+{"id": "ru-w-04", "language": "ru", "label": "withdrawal", "text": "Заказал выплату выигрыша на банковский счёт, но ничего не поступило."}
+{"id": "ru-w-05", "language": "ru", "label": "withdrawal", "text": "С баланса списали деньги, а на кошелёк они не пришли."}
+{"id": "ru-w-06", "language": "ru", "label": "withdrawal", "text": "Почему мою заявку на снятие отклонили?"}
+{"id": "ru-w-07", "language": "ru", "label": "withdrawal", "text": "Перевёл прибыль на карту в понедельник, до сих пор нет денег."}
+{"id": "ru-w-08", "language": "ru", "label": "withdrawal", "text": "Банк говорит, что входящего перевода от вас не было, хотя баланс уменьшился."}
+{"id": "ru-w-09", "language": "ru", "label": "withdrawal", "text": "Получил на карту меньше, чем запросил к выплате."}
+{"id": "ru-w-10", "language": "ru", "label": "withdrawal", "text": "Кнопка вывода неактивна, не могу забрать свои деньги."}
+{"id": "ru-w-11", "language": "ru", "label": "withdrawal", "text": "Отправил средства на криптокошелёк, транзакция не подтверждается."}
+{"id": "ru-w-12", "language": "ru", "label": "withdrawal", "text": "Вы отменили мою выплату без объяснения причин."}
+{"id": "ru-w-13", "language": "ru", "label": "withdrawal", "text": "Деньги ушли на неверные реквизиты, помогите вернуть."}
+{"id": "ru-w-14", "language": "ru", "label": "withdrawal", "text": "Жду выплату уже пять рабочих дней."}
+{"id": "ru-w-15", "language": "ru", "label": "withdrawal", "text": "Система показывает, что перевод на карту выполнен, но деньги не зачислены."}
+{"id": "ru-w-16", "language": "ru", "label": "withdrawal", "text": "Хочу забрать деньги со счёта, но заявка всё время отклоняется."}
+{"id": "ru-w-17", "language": "ru", "label": "withdrawal", "text": "Лимит на вывод не даёт мне получить мои средства."}
+{"id": "ru-w-18", "language": "ru", "label": "withdrawal", "text": "Запросил 300 долларов на Skrill, статус «завершено», а денег нет."}
+{"id": "ru-w-19", "language": "ru", "label": "withdrawal", "text": "Когда придут деньги, которые я заказал на выплату?"}
+{"id": "ru-w-20", "language": "ru", "label": "withdrawal", "text": "Средства со счёта не дошли до моего банка."}
+{"id": "ru-w-21", "language": "ru", "label": "withdrawal", "text": "Деньги так и не поступили на банковский счёт, хотя заявку я создал пятого числа."}
+{"id": "ru-w-22", "language": "ru", "label": "withdrawal", "text": "Попросил отправить баланс на Revolut, но ничего не пришло."}
+{"id": "ru-w-23", "language": "ru", "label": "withdrawal", "text": "Перевод со счёта отмечен как неудачный, а средства исчезли."}
+{"id": "ru-w-24", "language": "ru", "label": "withdrawal", "text": "Не могу забрать деньги, форма заявки постоянно зависает."}
+{"id": "ru-w-25", "language": "ru", "label": "withdrawal", "text": "Обработайте мою выплату, прошло уже две недели."}
+{"id": "ru-w-26", "language": "ru", "label": "withdrawal", "text": "Вывод одобрен, но банк ничего не получил."}
+{"id": "ru-w-27", "language": "ru", "label": "withdrawal", "text": "Запросил прибыль на кошелёк Neteller и получил только часть."}
+{"id": "ru-w-28", "language": "ru", "label": "withdrawal", "text": "Каждый раз, когда пытаюсь отправить средства на карту, заявку отменяют."}
+{"id": "ru-w-29", "language": "ru", "label": "withdrawal", "text": "С баланса за выплату списали больше, чем я запрашивал."}
+{"id": "ru-w-30", "language": "ru", "label": "withdrawal", "text": "Мне обещали, что деньги придут в течение суток после заявки, прошло пять дней."}
+{"id": "ru-w-31", "language": "ru", "label": "withdrawal", "text": "Попросил перевести деньги в банк, а они ушли на старый закрытый счёт."}
+{"id": "ru-w-32", "language": "ru", "label": "withdrawal", "text": "Статус моей заявки на выплату сменился на «возвращено», что это значит?"}
+{"id": "ru-d-01", "language": "ru", "label": "deposit", "text": "Пополнил счёт банковским переводом вчера, баланс по-прежнему нулевой."}
+{"id": "ru-d-02", "language": "ru", "label": "deposit", "text": "С карты списали деньги, но на счёт они не зачислены."}
+{"id": "ru-d-03", "language": "ru", "label": "deposit", "text": "Внёс депозит через PayPal два дня назад, средства не отображаются."}
+{"id": "ru-d-04", "language": "ru", "label": "deposit", "text": "Оплата прошла, а баланс не изменился."}
+{"id": "ru-d-05", "language": "ru", "label": "deposit", "text": "Перевёл деньги на свой счёт через электронный кошелёк, ничего не пришло."}
+{"id": "ru-d-06", "language": "ru", "label": "deposit", "text": "Депозит завис в статусе ожидания уже 48 часов."}
+{"id": "ru-d-07", "language": "ru", "label": "deposit", "text": "Отправил 100 долларов, а зачислили только 90."}
+{"id": "ru-d-08", "language": "ru", "label": "deposit", "text": "Перевёл криптовалюту на ваш адрес, но зачисления нет."}
+{"id": "ru-d-09", "language": "ru", "label": "deposit", "text": "С меня дважды списали деньги за одно пополнение."}
+{"id": "ru-d-10", "language": "ru", "label": "deposit", "text": "Деньги ушли с моей банковской карты, но на торговый баланс не поступили."}
+{"id": "ru-d-11", "language": "ru", "label": "deposit", "text": "При оплате выдало ошибку, но с карты деньги всё равно списались."}
+{"id": "ru-d-12", "language": "ru", "label": "deposit", "text": "Отправил USDT не в той сети при пополнении."}
+{"id": "ru-d-13", "language": "ru", "label": "deposit", "text": "Банковский перевод на счёт вернулся обратно."}
+{"id": "ru-d-14", "language": "ru", "label": "deposit", "text": "Утром закинул деньги на счёт и не вижу их."}
+{"id": "ru-d-15", "language": "ru", "label": "deposit", "text": "Страница оплаты приняла платёж, но на балансе пусто."}
+{"id": "ru-d-16", "language": "ru", "label": "deposit", "text": "Зачислите, пожалуйста, мой платёж, оплатил картой в пятницу."}
+{"id": "ru-d-17", "language": "ru", "label": "deposit", "text": "Хочу пополнить баланс, но все платежи картой отклоняются."}
+{"id": "ru-d-18", "language": "ru", "label": "deposit", "text": "Баланс не увеличился после перевода."}
+{"id": "ru-d-19", "language": "ru", "label": "deposit", "text": "Оплатил через Qiwi, деньги не дошли до аккаунта."}
+{"id": "ru-d-20", "language": "ru", "label": "deposit", "text": "Положил деньги на счёт, а они пропали."}
+{"id": "ru-d-21", "language": "ru", "label": "deposit", "text": "Оплатил на счёт через Google Pay, а денег нет."}
+{"id": "ru-d-22", "language": "ru", "label": "deposit", "text": "Депозит отображается как неуспешный, но банк списал средства."}
+{"id": "ru-d-23", "language": "ru", "label": "deposit", "text": "Сделал перевод для пополнения, но баланс счёта не изменился."}
+{"id": "ru-d-24", "language": "ru", "label": "deposit", "text": "Платёж картой для пополнения одобрен, но ничего не зачислено."}
+{"id": "ru-d-25", "language": "ru", "label": "deposit", "text": "Закинул 300 долларов на кошелёк здесь и ничего не вижу."}
+{"id": "ru-d-26", "language": "ru", "label": "deposit", "text": "Средства, отправленные на счёт вчера вечером, до сих пор не зачислены."}
+{"id": "ru-d-27", "language": "ru", "label": "deposit", "text": "Оплатил Mastercard, а на баланс дошла только часть суммы."}
+{"id": "ru-d-28", "language": "ru", "label": "deposit", "text": "Мой SEPA-перевод поступил в ваш банк, но баланс пустой."}
+{"id": "ru-d-29", "language": "ru", "label": "deposit", "text": "Пополнял ваучером, код не приняли, а деньги списали."}
+{"id": "ru-d-30", "language": "ru", "label": "deposit", "text": "Оплату на счёт списали с карты три раза."}
+{"id": "ru-d-31", "language": "ru", "label": "deposit", "text": "Система пишет, что мой депозит на проверке уже три дня."}
+{"id": "ru-d-32", "language": "ru", "label": "deposit", "text": "Перевёл деньги из банка на этот счёт, и они пропали."}
+{"id": "ru-o-01", "language": "ru", "label": "other", "text": "Не могу войти в аккаунт, пишет неверный пароль даже после сброса."}
+{"id": "ru-o-02", "language": "ru", "label": "other", "text": "Приложение вылетает при открытии настроек."}
+{"id": "ru-o-03", "language": "ru", "label": "other", "text": "Мой аккаунт заблокировали без объяснения причин."}
+{"id": "ru-o-04", "language": "ru", "label": "other", "text": "Загрузил паспорт для верификации неделю назад, до сих пор на проверке."}
+{"id": "ru-o-05", "language": "ru", "label": "other", "text": "Не приходят СМС с кодами двухфакторной аутентификации."}
+{"id": "ru-o-06", "language": "ru", "label": "other", "text": "Сайт постоянно выкидывает меня из аккаунта через несколько секунд."}
+{"id": "ru-o-07", "language": "ru", "label": "other", "text": "Не получается сменить электронную почту в профиле, форма выдаёт ошибку."}
+{"id": "ru-o-08", "language": "ru", "label": "other", "text": "Бонус не начислили, хотя я выполнил все условия."}
+{"id": "ru-o-09", "language": "ru", "label": "other", "text": "Чат поддержки не отвечает уже несколько часов."}
+{"id": "ru-o-10", "language": "ru", "label": "other", "text": "Хочу закрыть аккаунт и удалить свои персональные данные."}
+{"id": "ru-o-11", "language": "ru", "label": "other", "text": "После обновления приложение зависает на экране загрузки."}
+{"id": "ru-o-12", "language": "ru", "label": "other", "text": "Верификацию личности отклонили без причины."}
+{"id": "ru-o-13", "language": "ru", "label": "other", "text": "С меня берут ежемесячную комиссию, на которую я не соглашался."}
+{"id": "ru-o-14", "language": "ru", "label": "other", "text": "Графики на странице торговли не загружаются."}
+{"id": "ru-o-15", "language": "ru", "label": "other", "text": "Забыл пароль, а ссылка для восстановления не работает."}
+{"id": "ru-o-16", "language": "ru", "label": "other", "text": "Кто-то зашёл в мой аккаунт из другой страны, похоже, меня взломали."}
+{"id": "ru-o-17", "language": "ru", "label": "other", "text": "Промокод пишет, что он недействителен."}
+{"id": "ru-o-18", "language": "ru", "label": "other", "text": "Не могу изменить номер телефона в настройках профиля."}
+{"id": "ru-o-19", "language": "ru", "label": "other", "text": "При открытии истории операций появляется ошибка 500."}
+{"id": "ru-o-20", "language": "ru", "label": "other", "text": "Пропали реферальные награды из профиля."}
+{"id": "ru-o-21", "language": "ru", "label": "other", "text": "Не могу сбросить пароль, письмо не приходит."}
+{"id": "ru-o-22", "language": "ru", "label": "other", "text": "Аккаунт заблокирован после нескольких неудачных попыток входа."}
+{"id": "ru-o-23", "language": "ru", "label": "other", "text": "Приложение показывает белый экран на Android."}
+{"id": "ru-o-24", "language": "ru", "label": "other", "text": "Хочу обновить домашний адрес в профиле."}
+{"id": "ru-o-25", "language": "ru", "label": "other", "text": "Селфи для верификации постоянно отклоняют."}
+{"id": "ru-o-26", "language": "ru", "label": "other", "text": "Сайт очень медленный и отваливается по таймауту."}
+{"id": "ru-o-27", "language": "ru", "label": "other", "text": "Мне пришло подозрительное письмо якобы от вас."}
+{"id": "ru-o-28", "language": "ru", "label": "other", "text": "Настройка языка всё время сбрасывается на английский."}
+{"id": "ru-o-29", "language": "ru", "label": "other", "text": "Меня выкинуло из аккаунта, и теперь логин не распознаётся."}
+{"id": "ru-o-30", "language": "ru", "label": "other", "text": "Заработанные бонусные баллы не отображаются."}
+{"id": "ru-o-31", "language": "ru", "label": "other", "text": "Не открывается ни одна страница, пишет «доступ запрещён»."}
+{"id": "ru-o-32", "language": "ru", "label": "other", "text": "В аккаунте неверная дата рождения, и я не могу её исправить."}
+{"id": "ru-u-01", "language": "ru", "label": "unclear", "text": "Здравствуйте"}
+{"id": "ru-u-02", "language": "ru", "label": "unclear", "text": "Привет, у меня проблема."}
+{"id": "ru-u-03", "language": "ru", "label": "unclear", "text": "Помогите, пожалуйста."}
+{"id": "ru-u-04", "language": "ru", "label": "unclear", "text": "Можете мне перезвонить?"}
+{"id": "ru-u-05", "language": "ru", "label": "unclear", "text": "Срочно!!!"}
+{"id": "ru-u-06", "language": "ru", "label": "unclear", "text": "Есть кто-нибудь?"}
+{"id": "ru-u-07", "language": "ru", "label": "unclear", "text": "Нужна помощь с аккаунтом."}
+{"id": "ru-u-08", "language": "ru", "label": "unclear", "text": "Добрый день, у меня вопрос."}
+{"id": "ru-u-09", "language": "ru", "label": "unclear", "text": "Спасибо"}
+{"id": "ru-u-10", "language": "ru", "label": "unclear", "text": "Что-то не так."}
+{"id": "ru-u-11", "language": "ru", "label": "unclear", "text": "Свяжитесь со мной как можно скорее."}
+{"id": "ru-u-12", "language": "ru", "label": "unclear", "text": "У меня проблема, поможете?"}
+{"id": "ru-u-13", "language": "ru", "label": "unclear", "text": "???"}
+{"id": "ru-u-14", "language": "ru", "label": "unclear", "text": "Алло, вы здесь?"}
+{"id": "ru-u-15", "language": "ru", "label": "unclear", "text": "Не работает."}
+{"id": "ru-u-16", "language": "ru", "label": "unclear", "text": "Хочу поговорить с менеджером."}
+{"id": "ru-u-17", "language": "ru", "label": "unclear", "text": "Ответьте, пожалуйста"}
+{"id": "ru-u-18", "language": "ru", "label": "unclear", "text": "У меня жалоба."}
+{"id": "ru-u-19", "language": "ru", "label": "unclear", "text": "Добрый вечер"}
+{"id": "ru-u-20", "language": "ru", "label": "unclear", "text": "Здравствуйте, вопрос по аккаунту."}
+{"id": "ru-u-21", "language": "ru", "label": "unclear", "text": "Ответьте мне."}
+{"id": "ru-u-22", "language": "ru", "label": "unclear", "text": "Можно помощь?"}
+{"id": "ru-u-23", "language": "ru", "label": "unclear", "text": "ок"}
+{"id": "ru-u-24", "language": "ru", "label": "unclear", "text": "Пишу вам снова."}
+{"id": "ru-u-25", "language": "ru", "label": "unclear", "text": "Это почта поддержки?"}
+{"id": "ru-u-26", "language": "ru", "label": "unclear", "text": "Привет, есть минутка?"}
+{"id": "ar-w-01", "language": "ar", "label": "withdrawal", "text": "طلبت سحب أموالي منذ ثلاثة أيام ولم تصل إلى حسابي البنكي حتى الآن."}
+{"id": "ar-w-02", "language": "ar", "label": "withdrawal", "text": "عملية السحب إلى بطاقتي معلقة منذ أسبوع."}
+{"id": "ar-w-03", "language": "ar", "label": "withdrawal", "text": "لا أستطيع سحب رصيدي، تظهر لي رسالة خطأ."}
+{"id": "ar-w-04", "language": "ar", "label": "withdrawal", "text": "طلبت تحويل أرباحي إلى حسابي البنكي ولم يصلني شيء."}
+{"id": "ar-w-05", "language": "ar", "label": "withdrawal", "text": "تم خصم المبلغ من رصيدي لكنه لم يصل إلى محفظتي."}
+{"id": "ar-w-06", "language": "ar", "label": "withdrawal", "text": "لماذا تم رفض طلب السحب الخاص بي؟"}
+{"id": "ar-w-07", "language": "ar", "label": "withdrawal", "text": "حولت أرباحي إلى بطاقتي يوم الاثنين وما زلت أنتظر."}
+{"id": "ar-w-08", "language": "ar", "label": "withdrawal", "text": "البنك يقول إنه لا توجد حوالة واردة منكم رغم أن رصيدي نقص."}
+{"id": "ar-w-09", "language": "ar", "label": "withdrawal", "text": "استلمت في البنك مبلغا أقل من الذي طلبته."}
+{"id": "ar-w-10", "language": "ar", "label": "withdrawal", "text": "زر السحب غير مفعل ولا أستطيع استلام أموالي."}
+{"id": "ar-w-11", "language": "ar", "label": "withdrawal", "text": "أرسلت أموالي إلى محفظة العملات الرقمية والمعاملة غير مؤكدة."}
+{"id": "ar-w-12", "language": "ar", "label": "withdrawal", "text": "قمتم بإلغاء الدفعة المستحقة لي بدون أي توضيح."}
+{"id": "ar-w-13", "language": "ar", "label": "withdrawal", "text": "تم إرسال أموالي إلى رقم حساب خاطئ، أرجو المساعدة في استرجاعها."}
+{"id": "ar-w-14", "language": "ar", "label": "withdrawal", "text": "أنتظر وصول أموالي منذ خمسة أيام عمل."}
+{"id": "ar-w-15", "language": "ar", "label": "withdrawal", "text": "النظام يظهر أن التحويل إلى بطاقتي تم بنجاح لكن المبلغ لم يصل."}
+{"id": "ar-w-16", "language": "ar", "label": "withdrawal", "text": "أريد إخراج أموالي من الحساب لكن الطلب يرفض دائما."}
+{"id": "ar-w-17", "language": "ar", "label": "withdrawal", "text": "حد السحب يمنعني من الحصول على أموالي."}
+{"id": "ar-w-18", "language": "ar", "label": "withdrawal", "text": "طلبت 300 دولار إلى حساب سكريل والحالة مكتملة لكن لم أستلم شيئا."}
+{"id": "ar-w-19", "language": "ar", "label": "withdrawal", "text": "متى ستصل الأموال التي طلبت صرفها؟"}
+{"id": "ar-w-20", "language": "ar", "label": "withdrawal", "text": "المبلغ الذي طلبت تحويله من حسابي لم يصل إلى البنك."}
+{"id": "ar-w-21", "language": "ar", "label": "withdrawal", "text": "لم تصل أموالي إلى حسابي البنكي رغم أنني طلبتها يوم 5."}
+{"id": "ar-w-22", "language": "ar", "label": "withdrawal", "text": "طلبت إرسال رصيدي إلى ريفولوت ولم يصل شيء."}
+{"id": "ar-w-23", "language": "ar", "label": "withdrawal", "text": "التحويل من حسابي فشل لكن الأموال اختفت."}
+{"id": "ar-w-24", "language": "ar", "label": "withdrawal", "text": "لا أستطيع إخراج أموالي، نموذج الطلب يتوقف دائما."}
+{"id": "ar-w-25", "language": "ar", "label": "withdrawal", "text": "أرجو معالجة الدفعة الخاصة بي، مر أسبوعان."}
+{"id": "ar-w-26", "language": "ar", "label": "withdrawal", "text": "تمت الموافقة على السحب لكن البنك لم يستلم شيئا."}
+{"id": "ar-w-27", "language": "ar", "label": "withdrawal", "text": "طلبت أرباحي إلى محفظة نتلر واستلمت جزءا منها فقط."}
+{"id": "ar-w-28", "language": "ar", "label": "withdrawal", "text": "كلما حاولت إرسال أموالي إلى بطاقتي يتم إلغاء الطلب."}
+{"id": "ar-w-29", "language": "ar", "label": "withdrawal", "text": "المبلغ المخصوم من رصيدي مقابل الصرف أكبر مما طلبت."}
+{"id": "ar-w-30", "language": "ar", "label": "withdrawal", "text": "قيل لي إن أموالي ستصل خلال 24 ساعة من الطلب، ومرت خمسة أيام."}
+{"id": "ar-w-31", "language": "ar", "label": "withdrawal", "text": "طلبت نقل أموالي إلى البنك لكنها ذهبت إلى حساب قديم مغلق."}
+{"id": "ar-w-32", "language": "ar", "label": "withdrawal", "text": "تغيرت حالة طلب الصرف إلى معكوس، ماذا يعني ذلك؟"}
+{"id": "ar-d-01", "language": "ar", "label": "deposit", "text": "قمت بإيداع مبلغ عبر تحويل بنكي أمس ورصيدي ما زال صفرا."}
+{"id": "ar-d-02", "language": "ar", "label": "deposit", "text": "تم خصم المبلغ من بطاقتي لكنه لم يضف إلى حسابي."}
+{"id": "ar-d-03", "language": "ar", "label": "deposit", "text": "أودعت عبر باي بال منذ يومين والمبلغ لا يظهر."}
+{"id": "ar-d-04", "language": "ar", "label": "deposit", "text": "تمت عملية الدفع لكن الرصيد لم يتغير."}
+{"id": "ar-d-05", "language": "ar", "label": "deposit", "text": "حولت مالا إلى حسابي عبر المحفظة الإلكترونية ولم يصل شيء."}
+{"id": "ar-d-06", "language": "ar", "label": "deposit", "text": "الإيداع معلق منذ 48 ساعة."}
+{"id": "ar-d-07", "language": "ar", "label": "deposit", "text": "أرسلت 100 دولار لكن تمت إضافة 90 فقط."}
+{"id": "ar-d-08", "language": "ar", "label": "deposit", "text": "حولت عملات رقمية إلى العنوان الخاص بكم ولم تتم إضافتها."}
+{"id": "ar-d-09", "language": "ar", "label": "deposit", "text": "تم خصم المبلغ مرتين مقابل شحن رصيد واحد."}
+{"id": "ar-d-10", "language": "ar", "label": "deposit", "text": "خرجت الأموال من حسابي البنكي لكنها لم تصل إلى رصيد التداول."}
+{"id": "ar-d-11", "language": "ar", "label": "deposit", "text": "ظهرت رسالة خطأ أثناء الدفع ومع ذلك تم خصم المبلغ من بطاقتي."}
+{"id": "ar-d-12", "language": "ar", "label": "deposit", "text": "أرسلت USDT على شبكة خاطئة عند تمويل حسابي."}
+{"id": "ar-d-13", "language": "ar", "label": "deposit", "text": "التحويل البنكي لتمويل الحساب عاد إلي."}
+{"id": "ar-d-14", "language": "ar", "label": "deposit", "text": "شحنت رصيدي صباح اليوم ولا أراه في الحساب."}
+{"id": "ar-d-15", "language": "ar", "label": "deposit", "text": "صفحة الدفع قبلت العملية لكن الرصيد فارغ."}
+{"id": "ar-d-16", "language": "ar", "label": "deposit", "text": "أرجو إضافة دفعتي إلى رصيدي، دفعت بالبطاقة يوم الجمعة."}
+{"id": "ar-d-17", "language": "ar", "label": "deposit", "text": "أريد شحن الرصيد لكن كل عمليات الدفع بالبطاقة مرفوضة."}
+{"id": "ar-d-18", "language": "ar", "label": "deposit", "text": "لم يزد رصيدي بعد إرسال الحوالة."}
+{"id": "ar-d-19", "language": "ar", "label": "deposit", "text": "دفعت عن طريق فودافون كاش ولم يصل المبلغ إلى الحساب."}
+{"id": "ar-d-20", "language": "ar", "label": "deposit", "text": "وضعت مالا في حسابي واختفى."}
+{"id": "ar-d-21", "language": "ar", "label": "deposit", "text": "دفعت إلى حسابي عبر جوجل باي والمال مفقود."}
+{"id": "ar-d-22", "language": "ar", "label": "deposit", "text": "الإيداع يظهر فاشلا لكن البنك أخذ المبلغ."}
+{"id": "ar-d-23", "language": "ar", "label": "deposit", "text": "قمت بتحويل لشحن الحساب لكن الرصيد لم يتغير."}
+{"id": "ar-d-24", "language": "ar", "label": "deposit", "text": "تمت الموافقة على الدفع بالبطاقة لتمويل الحساب لكن لم يضف شيء."}
+{"id": "ar-d-25", "language": "ar", "label": "deposit", "text": "شحنت محفظتي هنا بـ 300 دولار ولا أرى شيئا."}
+{"id": "ar-d-26", "language": "ar", "label": "deposit", "text": "الأموال التي أرسلتها إلى حسابي الليلة الماضية لم تضف بعد."}
+{"id": "ar-d-27", "language": "ar", "label": "deposit", "text": "دفعت بماستركارد ووصل جزء فقط من المبلغ إلى رصيدي."}
+{"id": "ar-d-28", "language": "ar", "label": "deposit", "text": "وصلت حوالة SEPA إلى بنككم لكن رصيدي فارغ."}
+{"id": "ar-d-29", "language": "ar", "label": "deposit", "text": "شحنت بقسيمة دفع ولم يقبل الرمز لكن تم خصم المال."}
+{"id": "ar-d-30", "language": "ar", "label": "deposit", "text": "تم خصم الدفعة إلى حسابي من بطاقتي ثلاث مرات."}
+{"id": "ar-d-31", "language": "ar", "label": "deposit", "text": "النظام يقول إن إيداعي قيد المراجعة منذ ثلاثة أيام."}
+{"id": "ar-d-32", "language": "ar", "label": "deposit", "text": "حولت مالا من البنك إلى هذا الحساب واختفى."}
+{"id": "ar-o-01", "language": "ar", "label": "other", "text": "لا أستطيع تسجيل الدخول إلى حسابي، تظهر كلمة المرور خاطئة حتى بعد إعادة تعيينها."}
+{"id": "ar-o-02", "language": "ar", "label": "other", "text": "التطبيق يتوقف عند فتح صفحة الإعدادات."}
+{"id": "ar-o-03", "language": "ar", "label": "other", "text": "تم حظر حسابي بدون أي سبب."}
+{"id": "ar-o-04", "language": "ar", "label": "other", "text": "رفعت جواز السفر للتحقق منذ أسبوع وما زال قيد المراجعة."}
+{"id": "ar-o-05", "language": "ar", "label": "other", "text": "لا تصلني رسائل رمز التحقق الثنائي."}
+{"id": "ar-o-06", "language": "ar", "label": "other", "text": "الموقع يخرجني من الحساب بعد ثوان."}
+{"id": "ar-o-07", "language": "ar", "label": "other", "text": "لا أستطيع تغيير البريد الإلكتروني في ملفي الشخصي، يظهر خطأ."}
+{"id": "ar-o-08", "language": "ar", "label": "other", "text": "لم يتم احتساب المكافأة رغم أنني حققت كل الشروط."}
+{"id": "ar-o-09", "language": "ar", "label": "other", "text": "الدردشة مع الدعم لا ترد منذ ساعات."}
+{"id": "ar-o-10", "language": "ar", "label": "other", "text": "أريد إغلاق حسابي وحذف بياناتي الشخصية."}
+{"id": "ar-o-11", "language": "ar", "label": "other", "text": "بعد التحديث الأخير التطبيق عالق في شاشة التحميل."}
+{"id": "ar-o-12", "language": "ar", "label": "other", "text": "تم رفض التحقق من هويتي بدون سبب."}
+{"id": "ar-o-13", "language": "ar", "label": "other", "text": "يتم تحصيل رسوم شهرية لم أوافق عليها."}
+{"id": "ar-o-14", "language": "ar", "label": "other", "text": "الرسوم البيانية في صفحة التداول لا تعمل."}
+{"id": "ar-o-15", "language": "ar", "label": "other", "text": "نسيت كلمة المرور ورابط الاستعادة لا يعمل."}
+{"id": "ar-o-16", "language": "ar", "label": "other", "text": "شخص ما دخل إلى حسابي من دولة أخرى، أعتقد أنه تم اختراقي."}
+{"id": "ar-o-17", "language": "ar", "label": "other", "text": "رمز العرض الترويجي يظهر أنه غير صالح."}
+{"id": "ar-o-18", "language": "ar", "label": "other", "text": "لا أستطيع تحديث رقم هاتفي في الإعدادات."}
+{"id": "ar-o-19", "language": "ar", "label": "other", "text": "تظهر رسالة خطأ 500 عند فتح سجل العمليات."}
+{"id": "ar-o-20", "language": "ar", "label": "other", "text": "اختفت مكافآت الإحالة من حسابي."}
+{"id": "ar-o-21", "language": "ar", "label": "other", "text": "لا أستطيع إعادة تعيين كلمة المرور لأن الرسالة لا تصلني."}
+{"id": "ar-o-22", "language": "ar", "label": "other", "text": "تم قفل حسابي بعد محاولات دخول كثيرة."}
+{"id": "ar-o-23", "language": "ar", "label": "other", "text": "التطبيق يظهر شاشة بيضاء على أندرويد."}
+{"id": "ar-o-24", "language": "ar", "label": "other", "text": "أريد تحديث عنوان السكن في ملفي الشخصي."}
+{"id": "ar-o-25", "language": "ar", "label": "other", "text": "صورة السيلفي للتحقق مرفوضة دائما."}
+{"id": "ar-o-26", "language": "ar", "label": "other", "text": "الموقع بطيء جدا وتنتهي المهلة."}
+{"id": "ar-o-27", "language": "ar", "label": "other", "text": "وصلتني رسالة مشبوهة تدعي أنها منكم."}
+{"id": "ar-o-28", "language": "ar", "label": "other", "text": "إعداد اللغة يعود دائما إلى الإنجليزية."}
+{"id": "ar-o-29", "language": "ar", "label": "other", "text": "تم تسجيل خروجي والآن اسم المستخدم غير معروف."}
+{"id": "ar-o-30", "language": "ar", "label": "other", "text": "نقاط الولاء التي جمعتها لا تظهر."}
+{"id": "ar-o-31", "language": "ar", "label": "other", "text": "لا أستطيع فتح أي صفحة، تظهر رسالة رفض الوصول."}
+{"id": "ar-o-32", "language": "ar", "label": "other", "text": "تاريخ الميلاد في حسابي خاطئ ولا أستطيع تعديله."}
+{"id": "ar-u-01", "language": "ar", "label": "unclear", "text": "مرحبا"}
+{"id": "ar-u-02", "language": "ar", "label": "unclear", "text": "مرحبا، لدي مشكلة."}
+{"id": "ar-u-03", "language": "ar", "label": "unclear", "text": "ساعدوني من فضلكم."}
+{"id": "ar-u-04", "language": "ar", "label": "unclear", "text": "هل يمكنكم الاتصال بي؟"}
+{"id": "ar-u-05", "language": "ar", "label": "unclear", "text": "عاجل!!!"}
+{"id": "ar-u-06", "language": "ar", "label": "unclear", "text": "هل يوجد أحد؟"}
+{"id": "ar-u-07", "language": "ar", "label": "unclear", "text": "أحتاج مساعدة في حسابي."}
+{"id": "ar-u-08", "language": "ar", "label": "unclear", "text": "صباح الخير، لدي سؤال."}
+{"id": "ar-u-09", "language": "ar", "label": "unclear", "text": "شكرا"}
+{"id": "ar-u-10", "language": "ar", "label": "unclear", "text": "هناك خطأ ما."}
+{"id": "ar-u-11", "language": "ar", "label": "unclear", "text": "تواصلوا معي في أقرب وقت."}
+{"id": "ar-u-12", "language": "ar", "label": "unclear", "text": "عندي مشكلة، هل يمكنكم المساعدة؟"}
+{"id": "ar-u-13", "language": "ar", "label": "unclear", "text": "؟؟؟"}
+{"id": "ar-u-14", "language": "ar", "label": "unclear", "text": "ألو، هل أنتم هنا؟"}
+{"id": "ar-u-15", "language": "ar", "label": "unclear", "text": "لا يعمل."}
+{"id": "ar-u-16", "language": "ar", "label": "unclear", "text": "أريد التحدث مع المدير."}
+{"id": "ar-u-17", "language": "ar", "label": "unclear", "text": "ردوا من فضلكم"}
+{"id": "ar-u-18", "language": "ar", "label": "unclear", "text": "لدي شكوى."}
+{"id": "ar-u-19", "language": "ar", "label": "unclear", "text": "مساء الخير"}
+{"id": "ar-u-20", "language": "ar", "label": "unclear", "text": "لدي سؤال عن حسابي."}
+{"id": "ar-u-21", "language": "ar", "label": "unclear", "text": "أجيبوني من فضلكم."}
+{"id": "ar-u-22", "language": "ar", "label": "unclear", "text": "هل يمكن المساعدة؟"}
+{"id": "ar-u-23", "language": "ar", "label": "unclear", "text": "حسنا"}
+{"id": "ar-u-24", "language": "ar", "label": "unclear", "text": "أكتب لكم مرة أخرى."}
+{"id": "ar-u-25", "language": "ar", "label": "unclear", "text": "هل هذا بريد الدعم؟"}
+{"id": "ar-u-26", "language": "ar", "label": "unclear", "text": "مرحبا، هل لديكم دقيقة؟"}

@@ -28,6 +28,7 @@ from app.ai.base import (
     TypeOption,
 )
 from app.domain.complaint_schemas.spec import FieldSpec, FieldType
+from app.domain.dates import MONTH_NAMES, YEAR_TOKEN_RE
 
 # Keyword lists are intentionally multilingual (English / Russian / Arabic) so
 # this offline provider can classify complaints regardless of the customer's
@@ -164,24 +165,13 @@ def _is_pure_filler(cleaned_message: str) -> bool:
 # "8 сентября" / "8 سبتمبر" resolves even without a numeric date format -
 # the schema's own extraction_hint already asks for this ("accept relative
 # references like 'yesterday' if resolvable"). No year is ever stated in
-# these phrasings, so the current year is assumed.
-_MONTH_NAMES: dict[str, int] = {
-    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
-    "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
-    "august": 8, "aug": 8, "september": 9, "sep": 9, "sept": 9,
-    "october": 10, "oct": 10, "november": 11, "nov": 11, "december": 12, "dec": 12,
-    "января": 1, "январь": 1, "февраля": 2, "февраль": 2, "марта": 3, "март": 3,
-    "апреля": 4, "апрель": 4, "мая": 5, "май": 5, "июня": 6, "июнь": 6,
-    "июля": 7, "июль": 7, "августа": 8, "август": 8, "сентября": 9, "сентябрь": 9,
-    "октября": 10, "октябрь": 10, "ноября": 11, "ноябрь": 11, "декабря": 12, "декабрь": 12,
-    "يناير": 1, "فبراير": 2, "مارس": 3, "أبريل": 4, "ابريل": 4, "مايو": 5,
-    "يونيو": 6, "يوليو": 7, "أغسطس": 8, "اغسطس": 8, "سبتمبر": 9,
-    "أكتوبر": 10, "اكتوبر": 10, "نوفمبر": 11, "ديسمبر": 12,
-}
+# these phrasings, so the current year is assumed. The table lives in
+# app.domain.dates so the evidence locator reads dates exactly as this does.
+_MONTH_NAMES = MONTH_NAMES
 _DATE_WORD_RE = re.compile(r"[^\s,،.]+")
 
 
-_YEAR_TOKEN_RE = re.compile(r"^(?:19|20)\d{2}$")
+_YEAR_TOKEN_RE = YEAR_TOKEN_RE
 
 
 def _parse_natural_date(message: str) -> str | None:
@@ -516,22 +506,35 @@ def _field_invalid_message(invalid: InvalidField, language_code: str) -> str:
     return generic.format(item=invalid.label)
 
 
+def keyword_classification(message: str, options: list[TypeOption]) -> Classification | None:
+    """The deterministic part of classification: an explicit type keyword.
+
+    Returns None when no withdrawal/deposit keyword is present. Exposed on its
+    own so the hybrid provider can treat a keyword match as authoritative
+    while letting the statistical classifier handle only what this misses.
+    """
+    text = message.lower()
+    scores = {opt.type: sum(1 for kw in _KEYWORDS.get(opt.type, ()) if kw in text)
+              for opt in options}
+    best_type = max(scores, key=lambda k: scores[k]) if scores else None
+    best_score = scores.get(best_type, 0) if best_type else 0
+    if best_score <= 0:
+        return None
+    return Classification(
+        type=best_type,
+        confidence=min(0.6 + 0.15 * best_score, 0.95),
+        rationale=f"Matched {best_score} keyword(s) for '{best_type}'.",
+        decided_by="rules",
+    )
+
+
 class RuleBasedAIProvider(AIProvider):
     name = "rule_based"
 
     async def classify(self, message: str, options: list[TypeOption]) -> Classification:
-        text = message.lower()
-        scores = {opt.type: sum(1 for kw in _KEYWORDS.get(opt.type, ()) if kw in text)
-                  for opt in options}
-        best_type = max(scores, key=lambda k: scores[k]) if scores else None
-        best_score = scores.get(best_type, 0) if best_type else 0
-
-        if best_score > 0:
-            return Classification(
-                type=best_type,
-                confidence=min(0.6 + 0.15 * best_score, 0.95),
-                rationale=f"Matched {best_score} keyword(s) for '{best_type}'.",
-            )
+        matched = keyword_classification(message, options)
+        if matched is not None:
+            return matched
 
         # No withdrawal/deposit signal.
         has_other = any(o.type == "other" for o in options)
@@ -544,11 +547,13 @@ class RuleBasedAIProvider(AIProvider):
                 type="other",
                 confidence=0.5,
                 rationale="No withdrawal/deposit keywords; concrete problem described -> 'other'.",
+                decided_by="rules",
             )
         return Classification(
             type=None,
             confidence=0.0,
             rationale="Too vague to classify.",
+            decided_by="rules",
         )
 
     async def extract(

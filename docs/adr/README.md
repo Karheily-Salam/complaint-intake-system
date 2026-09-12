@@ -19,3 +19,4 @@ most.
 | [006](006-sqlite-first.md) | SQLite for the first deployment |
 | [007](007-threading-and-idempotency.md) | Email threading and idempotency strategy |
 | [008](008-demo-isolation.md) | Public demo isolated from real customer data |
+| [009](009-ml-assists-the-deterministic-engine.md) | Statistical models assist; the engine still decides |

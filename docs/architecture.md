@@ -48,7 +48,10 @@ display grouping. Adding a complaint type is a file, not a code change.
 
 ## Email intake flow
 
-`EmailPoller` runs inside the API process on a ~60 second interval:
+`EmailPoller` runs inside the API process. With IMAP IDLE the server pushes
+a notification as soon as mail lands and the configured interval (~60s) is
+only the fallback ceiling for a quiet mailbox; with IDLE off it is a plain
+fixed-interval poll:
 
 1. `fetch_new()` — an IMAP `UNSEEN` search. The provider does **not** mark
    anything read.
@@ -259,9 +262,9 @@ outgoing mail are skipped and acknowledged rather than answered, which is what
 makes a single-mailbox deployment safe. Outgoing mail is marked
 `Auto-Submitted: auto-replied` so other responders do not loop with us.
 
-**Status:** implemented and tested, not currently switched on — the deployment
-runs on `mock` because outbound SMTP is blocked at the network level on the
-host.
+**Status:** live. The deployment runs `EMAIL_PROVIDER=imap_smtp` against the
+`complaints@startplus.tech` mailbox (Timeweb IMAP/SMTP) with IDLE enabled, so a
+reply normally goes out about a second after the customer's email arrives.
 
 ## Deployment architecture
 

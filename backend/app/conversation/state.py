@@ -8,10 +8,12 @@ Framework-free and DB-free. The service layer maps ORM rows into a
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 
 from app.ai.base import Classification, ReplyDraft
 from app.domain.complaint_schemas.spec import FieldSpec
 from app.domain.enums import ConversationStatus, FieldStatus
+from app.domain.evidence import Evidence
 
 _PRESENT_STATUSES = {FieldStatus.VALIDATED, FieldStatus.CONFIRMED}
 
@@ -44,6 +46,9 @@ class ConversationState:
     # be interpreted primarily as an answer to that field - see
     # ConversationEngine._extract_and_merge.
     pending_field: str | None = None
+    # The day the latest message was received, for resolving relative dates
+    # ("yesterday") when checking extraction evidence. None means today.
+    reference_date: date | None = None
 
     def by_key(self) -> dict[str, CollectedField]:
         return {f.key: f for f in self.collected}
@@ -66,6 +71,10 @@ class FieldOutcome:
     validation_error: str | None = None
     confidence: float | None = None
     changed: bool = False  # did the latest message change this field?
+    # Where in the latest message a changed value came from (see
+    # app.domain.evidence). None for values not taken from the message text,
+    # such as the engine's own summary.
+    evidence: Evidence | None = None
 
     @property
     def is_present(self) -> bool:
@@ -73,8 +82,23 @@ class FieldOutcome:
 
 
 @dataclass
+class ExtractionAudit:
+    """What one extraction call proposed and what the evidence check did with it.
+
+    Keys and methods only - never values - so it can be logged safely.
+    """
+
+    policy: str
+    proposed: int = 0
+    accepted: dict[str, str] = field(default_factory=dict)  # key -> evidence method
+    rejected: list[str] = field(default_factory=list)  # keys with no supporting text
+    latency_ms: float = 0.0
+
+
+@dataclass
 class EngineOutcome:
     classification: Classification | None = None
+    extraction: ExtractionAudit | None = None
     complaint_type: str | None = None
     # Free-text deposit method as stated by the customer (verbatim copy of the
     # ``deposit_method`` field, if any). Denormalisation for the ticket / UI only -

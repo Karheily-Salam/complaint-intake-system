@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base, TimestampMixin
@@ -41,5 +41,15 @@ class ComplaintField(Base, TimestampMixin):
     )
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     validation_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # The exact text in the customer's message that supports ``value``, and
+    # how it was matched (see app.domain.evidence). Offsets are into that
+    # message's body with quoted reply history removed. Null when the value
+    # did not come from message text - the engine's own summary, or a staff
+    # correction.
+    evidence_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_start: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    evidence_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    evidence_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     complaint: Mapped[Complaint] = relationship(back_populates="fields")

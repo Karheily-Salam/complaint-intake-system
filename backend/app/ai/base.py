@@ -36,10 +36,34 @@ class TypeOption(BaseModel):
     description: str = ""
 
 
+class MLSignal(BaseModel):
+    """What the statistical classifier said, recorded whether or not it was used.
+
+    ``label`` is None when the model abstained. Kept next to the decision so
+    prediction logging, evaluation and staff corrections can compare the
+    model with what the deterministic system actually did.
+    """
+
+    label: str | None = None
+    top_label: str | None = None
+    confidence: float = 0.0
+    probabilities: dict[str, float] = Field(default_factory=dict)
+    abstained: bool = True
+    model_name: str = ""
+    model_version: str = ""
+    latency_ms: float = 0.0
+
+
 class Classification(BaseModel):
     type: str | None = None
     confidence: float = 0.0
     rationale: str = ""
+    # Which layer produced ``type``: "rules" (deterministic keyword match),
+    # "ml" (calibrated classifier, only when the rules had no match) or
+    # "provider" (the configured provider's own classify). None for providers
+    # that predate this field.
+    decided_by: str | None = None
+    ml: MLSignal | None = None
 
 
 class LanguageDetection(BaseModel):

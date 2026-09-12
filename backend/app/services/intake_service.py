@@ -17,6 +17,8 @@ resolution and the transport details of the outgoing reply differ.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.ai.factory import get_ai_provider
@@ -42,6 +44,7 @@ from app.domain.enums import (
 from app.email.base import InboundEmail, OutboundEmail
 from app.email.factory import get_email_provider
 from app.email.quoting import strip_quoted_reply
+from app.ml.prediction_log import record_classification, record_extraction
 from app.repositories.conversation_repo import ConversationRepository
 from app.repositories.customer_repo import CustomerRepository
 from app.schemas.conversation import InboundEmailIn, IntakeResult
@@ -65,7 +68,9 @@ class IntakeService:
         self.customers = CustomerRepository(db)
         self.conversations = ConversationRepository(db)
         self.registry = get_registry()
-        self.engine = ConversationEngine(get_ai_provider(), self.registry)
+        provider = get_ai_provider()
+        self.engine = ConversationEngine(provider, self.registry)
+        self.engine_provider_name = provider.name
         self.email = get_email_provider()
 
     # ------------------------------------------------------------------ entry points
@@ -182,7 +187,8 @@ class IntakeService:
 
         complaint = self.conversations.get_or_create_complaint(conversation)
         outcome = await self._run_turn(
-            conversation, complaint, customer, inbound.body, inbound_msg.id
+            conversation, complaint, customer, inbound.body, inbound_msg.id,
+            received_at=inbound.received_at,
         )
         reply_body, ticket, ticket_is_new = await self._finalize(
             conversation, customer, complaint, outcome
@@ -217,6 +223,8 @@ class IntakeService:
         customer: Customer,
         body: str,
         source_message_id: int,
+        *,
+        received_at: datetime | None = None,
     ):
         """Run the engine for one message and persist everything it decided.
 
@@ -239,11 +247,34 @@ class IntakeService:
             ],
             language_code=conversation.language_code,
             pending_field=conversation.pending_field,
+            reference_date=received_at.date() if received_at else None,
         )
 
         outcome = await self.engine.advance(state)
         conversation.language_code = outcome.language_code
         conversation.pending_field = outcome.pending_field
+
+        if outcome.classification is not None:
+            record_classification(
+                self.db,
+                conversation_id=conversation.id,
+                message_id=source_message_id,
+                is_demo=conversation.is_demo,
+                language_code=outcome.language_code,
+                classification=outcome.classification,
+                final_type=outcome.complaint_type,
+                provider_name=self.engine_provider_name,
+            )
+        if outcome.extraction is not None:
+            record_extraction(
+                self.db,
+                conversation_id=conversation.id,
+                message_id=source_message_id,
+                is_demo=conversation.is_demo,
+                language_code=outcome.language_code,
+                audit=outcome.extraction,
+                provider_name=self.engine_provider_name,
+            )
 
         if outcome.complaint_type and not complaint.type:
             complaint.type = outcome.complaint_type
@@ -521,6 +552,12 @@ class IntakeService:
                 row.confidence = fo.confidence
             if fo.changed:
                 row.source_message_id = source_message_id
+                # A new value never keeps the previous value's evidence.
+                ev = fo.evidence
+                row.evidence_text = ev.text if ev else None
+                row.evidence_start = ev.start if ev else None
+                row.evidence_end = ev.end if ev else None
+                row.evidence_method = ev.method if ev else None
 
     def _result(
         self,

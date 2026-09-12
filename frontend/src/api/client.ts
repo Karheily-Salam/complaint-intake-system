@@ -2,7 +2,13 @@ import { StaffRequestError, classifyStatus } from "@/lib/staffAuth";
 import type {
   ComplaintSchema,
   ConversationOut,
+  CorrectionIn,
+  CorrectionOut,
+  Feedback,
+  IncidentReport,
   IntakeResult,
+  MonitoringSnapshot,
+  SimilarTickets,
   TicketDetail,
   TicketReplyIn,
   TicketReplyOut,
@@ -129,6 +135,24 @@ export const staffApi = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+
+  monitoring: (key: string, days = 7) =>
+    staffJson<MonitoringSnapshot>(key, `/ml/monitoring?days=${days}`),
+
+  incidents: (key: string, windowHours = 6) =>
+    staffJson<IncidentReport>(key, `/ml/incidents?window_hours=${windowHours}`),
+
+  correctTicket: (key: string, reference: string, payload: CorrectionIn) =>
+    staffJson<CorrectionOut>(key, `/tickets/${encodeURIComponent(reference)}/corrections`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  ticketCorrections: (key: string, reference: string) =>
+    staffJson<Feedback[]>(key, `/tickets/${encodeURIComponent(reference)}/corrections`),
+
+  similarTickets: (key: string, reference: string) =>
+    staffJson<SimilarTickets>(key, `/tickets/${encodeURIComponent(reference)}/similar`),
 
   // Note the absent recipient: the server addresses the reply from the ticket
   // itself, so this call cannot be pointed at a different address.

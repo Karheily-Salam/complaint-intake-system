@@ -8,8 +8,14 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 backend/complaint_intake.db
+# Downloaded ML model files (scripts/download_embedding_model.py)
+backend/models/
+# Exported staff-correction datasets: derived from real mail, never committed
+backend/datasets/feedback/
 
 # ---- Environment / secrets ----
 .env

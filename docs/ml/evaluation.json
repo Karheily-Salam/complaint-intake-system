@@ -1,0 +1,1115 @@
+{
+  "generated_at": "2026-09-12T00:16:39+00:00",
+  "datasets": {
+    "classification_test": {
+      "path": "datasets/complaints/test.jsonl",
+      "sha256": "aecd8a09587a163961641f648a1708c4f16db13b1d4022dde750db720be2f0a3",
+      "n": 96
+    },
+    "extraction_test": {
+      "path": "datasets/complaints/extraction_test.jsonl",
+      "sha256": "55cda6e0b8228c0865143889e9215148d4d787de8c66189d87664cfe00e0c3e2",
+      "n": 24
+    }
+  },
+  "models": {
+    "classifier": {
+      "name": "complaint-type-linear",
+      "version": "1.0.0+70050073",
+      "threshold": 0.82,
+      "temperature": 0.5953,
+      "cross_validation": {
+        "macro_f1": 0.813,
+        "nll_calibrated": 0.5163,
+        "nll_uncalibrated": 0.586
+      }
+    },
+    "embedder": {
+      "name": "hashing-char-ngram",
+      "version": "hashing-char-ngram-1024-v1",
+      "dim": 1024
+    },
+    "extractor": "rule_based + evidence check"
+  },
+  "classification": {
+    "rules": {
+      "system": "rules",
+      "n": 96,
+      "accuracy": 0.4167,
+      "macro_f1": 0.3833,
+      "per_class": {
+        "deposit": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4
+        },
+        "other": {
+          "support": 24,
+          "precision": 0.5714,
+          "recall": 0.1667,
+          "f1": 0.2581
+        },
+        "unclear": {
+          "support": 24,
+          "precision": 0.3117,
+          "recall": 1.0,
+          "f1": 0.4752
+        },
+        "withdrawal": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4
+        }
+      },
+      "confusion": {
+        "deposit": {
+          "deposit": 6,
+          "other": 1,
+          "unclear": 17,
+          "withdrawal": 0
+        },
+        "other": {
+          "deposit": 0,
+          "other": 4,
+          "unclear": 20,
+          "withdrawal": 0
+        },
+        "unclear": {
+          "deposit": 0,
+          "other": 0,
+          "unclear": 24,
+          "withdrawal": 0
+        },
+        "withdrawal": {
+          "deposit": 0,
+          "other": 2,
+          "unclear": 16,
+          "withdrawal": 6
+        }
+      },
+      "by_language": {
+        "ar": {
+          "n": 32,
+          "accuracy": 0.3125,
+          "macro_f1": 0.2164
+        },
+        "en": {
+          "n": 32,
+          "accuracy": 0.5625,
+          "macro_f1": 0.5542
+        },
+        "ru": {
+          "n": 32,
+          "accuracy": 0.375,
+          "macro_f1": 0.3111
+        }
+      },
+      "coverage": {
+        "coverage": 0.1979,
+        "selective_accuracy": 0.8421,
+        "answered": 19
+      },
+      "ece": 0.2849,
+      "reliability": [
+        {
+          "range": [
+            0.0,
+            0.1
+          ],
+          "n": 77,
+          "accuracy": 0.3117,
+          "mean_confidence": 0.0
+        },
+        {
+          "range": [
+            0.5,
+            0.6
+          ],
+          "n": 7,
+          "accuracy": 0.5714,
+          "mean_confidence": 0.5
+        },
+        {
+          "range": [
+            0.7,
+            0.8
+          ],
+          "n": 11,
+          "accuracy": 1.0,
+          "mean_confidence": 0.75
+        },
+        {
+          "range": [
+            0.9,
+            1.0
+          ],
+          "n": 1,
+          "accuracy": 1.0,
+          "mean_confidence": 0.9
+        }
+      ],
+      "errors": [
+        {
+          "id": "en-w-01",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-w-02",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-w-05",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "other"
+        },
+        {
+          "id": "en-w-07",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-w-08",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "other"
+        },
+        {
+          "id": "en-d-01",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-04",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "other"
+        },
+        {
+          "id": "en-d-05",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-07",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-08",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-01",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-04",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-06",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-07",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-01",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-02",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-03",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-05",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-06",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-08",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-01",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-04",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-05",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-06",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-07",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-08",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-01",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-02",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-03",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-04",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-05",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-06",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-07",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-08",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-01",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-02",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-03",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-05",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-06",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-07",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-08",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-01",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-02",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-04",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-05",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-06",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-07",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-08",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-01",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-02",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-03",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-04",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-05",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-06",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-07",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-08",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        }
+      ]
+    },
+    "ml": {
+      "system": "ml",
+      "n": 96,
+      "accuracy": 0.75,
+      "macro_f1": 0.7613,
+      "per_class": {
+        "deposit": {
+          "support": 24,
+          "precision": 0.9474,
+          "recall": 0.75,
+          "f1": 0.8372
+        },
+        "other": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.7083,
+          "f1": 0.8293
+        },
+        "unclear": {
+          "support": 24,
+          "precision": 0.5106,
+          "recall": 1.0,
+          "f1": 0.6761
+        },
+        "withdrawal": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.5417,
+          "f1": 0.7027
+        }
+      },
+      "confusion": {
+        "deposit": {
+          "deposit": 18,
+          "other": 0,
+          "unclear": 6,
+          "withdrawal": 0
+        },
+        "other": {
+          "deposit": 0,
+          "other": 17,
+          "unclear": 7,
+          "withdrawal": 0
+        },
+        "unclear": {
+          "deposit": 0,
+          "other": 0,
+          "unclear": 24,
+          "withdrawal": 0
+        },
+        "withdrawal": {
+          "deposit": 1,
+          "other": 0,
+          "unclear": 10,
+          "withdrawal": 13
+        }
+      },
+      "by_language": {
+        "ar": {
+          "n": 32,
+          "accuracy": 0.8438,
+          "macro_f1": 0.8444
+        },
+        "en": {
+          "n": 32,
+          "accuracy": 0.75,
+          "macro_f1": 0.7655
+        },
+        "ru": {
+          "n": 32,
+          "accuracy": 0.6562,
+          "macro_f1": 0.6547
+        }
+      },
+      "coverage": {
+        "coverage": 0.5104,
+        "selective_accuracy": 0.9796,
+        "answered": 49
+      },
+      "ece": 0.17,
+      "reliability": [
+        {
+          "range": [
+            0.3,
+            0.4
+          ],
+          "n": 1,
+          "accuracy": 1.0,
+          "mean_confidence": 0.3733
+        },
+        {
+          "range": [
+            0.4,
+            0.5
+          ],
+          "n": 2,
+          "accuracy": 0.5,
+          "mean_confidence": 0.4402
+        },
+        {
+          "range": [
+            0.5,
+            0.6
+          ],
+          "n": 8,
+          "accuracy": 0.125,
+          "mean_confidence": 0.5711
+        },
+        {
+          "range": [
+            0.6,
+            0.7
+          ],
+          "n": 3,
+          "accuracy": 0.3333,
+          "mean_confidence": 0.6259
+        },
+        {
+          "range": [
+            0.7,
+            0.8
+          ],
+          "n": 11,
+          "accuracy": 0.0909,
+          "mean_confidence": 0.7545
+        },
+        {
+          "range": [
+            0.8,
+            0.9
+          ],
+          "n": 12,
+          "accuracy": 0.6667,
+          "mean_confidence": 0.8546
+        },
+        {
+          "range": [
+            0.9,
+            1.0
+          ],
+          "n": 59,
+          "accuracy": 1.0,
+          "mean_confidence": 0.9733
+        }
+      ],
+      "errors": [
+        {
+          "id": "en-w-04",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-w-07",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-02",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-06",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-08",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-02",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-04",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-08",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-01",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-02",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-03",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-04",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-06",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-07",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-01",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-06",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-02",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-03",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-08",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-03",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "deposit"
+        },
+        {
+          "id": "ar-w-04",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-07",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-08",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-06",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        }
+      ]
+    },
+    "hybrid": {
+      "system": "hybrid",
+      "n": 96,
+      "accuracy": 0.8333,
+      "macro_f1": 0.841,
+      "per_class": {
+        "deposit": {
+          "support": 24,
+          "precision": 0.9524,
+          "recall": 0.8333,
+          "f1": 0.8889
+        },
+        "other": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.7917,
+          "f1": 0.8837
+        },
+        "unclear": {
+          "support": 24,
+          "precision": 0.6154,
+          "recall": 1.0,
+          "f1": 0.7619
+        },
+        "withdrawal": {
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.7083,
+          "f1": 0.8293
+        }
+      },
+      "confusion": {
+        "deposit": {
+          "deposit": 20,
+          "other": 0,
+          "unclear": 4,
+          "withdrawal": 0
+        },
+        "other": {
+          "deposit": 0,
+          "other": 19,
+          "unclear": 5,
+          "withdrawal": 0
+        },
+        "unclear": {
+          "deposit": 0,
+          "other": 0,
+          "unclear": 24,
+          "withdrawal": 0
+        },
+        "withdrawal": {
+          "deposit": 1,
+          "other": 0,
+          "unclear": 6,
+          "withdrawal": 17
+        }
+      },
+      "by_language": {
+        "ar": {
+          "n": 32,
+          "accuracy": 0.875,
+          "macro_f1": 0.8769
+        },
+        "en": {
+          "n": 32,
+          "accuracy": 0.9062,
+          "macro_f1": 0.9105
+        },
+        "ru": {
+          "n": 32,
+          "accuracy": 0.7188,
+          "macro_f1": 0.7332
+        }
+      },
+      "coverage": {
+        "coverage": 0.5938,
+        "selective_accuracy": 0.9825,
+        "answered": 57
+      },
+      "ece": 0.3022,
+      "reliability": [
+        {
+          "range": [
+            0.0,
+            0.1
+          ],
+          "n": 39,
+          "accuracy": 0.6154,
+          "mean_confidence": 0.0
+        },
+        {
+          "range": [
+            0.5,
+            0.6
+          ],
+          "n": 2,
+          "accuracy": 1.0,
+          "mean_confidence": 0.5
+        },
+        {
+          "range": [
+            0.7,
+            0.8
+          ],
+          "n": 11,
+          "accuracy": 1.0,
+          "mean_confidence": 0.75
+        },
+        {
+          "range": [
+            0.8,
+            0.9
+          ],
+          "n": 6,
+          "accuracy": 0.8333,
+          "mean_confidence": 0.8628
+        },
+        {
+          "range": [
+            0.9,
+            1.0
+          ],
+          "n": 38,
+          "accuracy": 1.0,
+          "mean_confidence": 0.9716
+        }
+      ],
+      "errors": [
+        {
+          "id": "en-w-07",
+          "language": "en",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-d-08",
+          "language": "en",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "en-o-04",
+          "language": "en",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-01",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-02",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-03",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-w-06",
+          "language": "ru",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-01",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-d-06",
+          "language": "ru",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-02",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-03",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ru-o-08",
+          "language": "ru",
+          "expected": "other",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-w-03",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "deposit"
+        },
+        {
+          "id": "ar-w-07",
+          "language": "ar",
+          "expected": "withdrawal",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-d-08",
+          "language": "ar",
+          "expected": "deposit",
+          "predicted": "unclear"
+        },
+        {
+          "id": "ar-o-06",
+          "language": "ar",
+          "expected": "other",
+          "predicted": "unclear"
+        }
+      ]
+    }
+  },
+  "extraction": {
+    "n": 24,
+    "fields_expected": 38,
+    "precision": 1.0,
+    "recall": 0.8684,
+    "f1": 0.9296,
+    "exact_messages": 0.8333,
+    "hallucination_rate": 0.0,
+    "rejected_values": 0,
+    "evidence_methods": {
+      "date": 2,
+      "exact": 31
+    },
+    "per_field": {
+      "account_email": {
+        "support": 7,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "deposit_method": {
+        "support": 5,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75
+      },
+      "source_wallet_or_account": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8
+      },
+      "transaction_date": {
+        "support": 7,
+        "precision": 1.0,
+        "recall": 0.8571,
+        "f1": 0.9231
+      },
+      "user_id": {
+        "support": 11,
+        "precision": 1.0,
+        "recall": 0.9091,
+        "f1": 0.9524
+      },
+      "withdrawal_transaction_id": {
+        "support": 5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "by_language": {
+      "ar": {
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474
+      },
+      "en": {
+        "support": 15,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "ru": {
+        "support": 13,
+        "precision": 1.0,
+        "recall": 0.6923,
+        "f1": 0.8182
+      }
+    },
+    "errors": [
+      {
+        "id": "ex-ru-02",
+        "field": "user_id",
+        "expected": "u-905512",
+        "predicted": null
+      },
+      {
+        "id": "ex-ru-03",
+        "field": "deposit_method",
+        "expected": "банковский перевод",
+        "predicted": null
+      },
+      {
+        "id": "ex-ru-07",
+        "field": "source_wallet_or_account",
+        "expected": "qiwi",
+        "predicted": null
+      },
+      {
+        "id": "ex-ru-07",
+        "field": "transaction_date",
+        "expected": "2026-09-05",
+        "predicted": null
+      },
+      {
+        "id": "ex-ar-03",
+        "field": "deposit_method",
+        "expected": "التحويل البنكي",
+        "predicted": null
+      }
+    ]
+  }
+}

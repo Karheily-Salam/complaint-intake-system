@@ -24,6 +24,9 @@ performs no I/O.
 
 from __future__ import annotations
 
+import time
+from datetime import date
+
 from app.ai.base import (
     AIProvider,
     CollectedFieldView,
@@ -33,11 +36,17 @@ from app.ai.base import (
     ReplyRequest,
     TypeOption,
 )
-from app.conversation.state import ConversationState, EngineOutcome, FieldOutcome
+from app.conversation.state import (
+    ConversationState,
+    EngineOutcome,
+    ExtractionAudit,
+    FieldOutcome,
+)
 from app.core.config import settings
 from app.domain.complaint_schemas.registry import ComplaintSchemaRegistry
 from app.domain.complaint_schemas.spec import ComplaintSchema, FieldSpec, FieldType
 from app.domain.enums import ConversationStatus, FieldStatus
+from app.domain.evidence import EVIDENCE_POLICY_VERSION, locate_evidence
 from app.domain.validation import validate_field
 
 _PROBLEM_DESCRIPTION_KEY = "problem_description"
@@ -83,8 +92,8 @@ class ConversationEngine:
 
         # ---- 3. extraction against this complaint's (flat) field set ----
         specs = schema.fields_for()
-        current = await self._extract_and_merge(
-            state.latest_message, specs, current, state.pending_field
+        current, outcome.extraction = await self._extract_and_merge(
+            state.latest_message, specs, current, state.pending_field, state.reference_date
         )
 
         # deposit_method (if the schema has one) is captured verbatim - the engine
@@ -228,9 +237,16 @@ class ConversationEngine:
         specs: list[FieldSpec],
         current: dict[str, FieldOutcome],
         pending_field: str | None,
-    ) -> dict[str, FieldOutcome]:
+        reference_date: date | None = None,
+    ) -> tuple[dict[str, FieldOutcome], ExtractionAudit]:
         known = {k: fo.value for k, fo in current.items() if fo.is_present and fo.value}
+        started = time.perf_counter()
         extraction = await self._ai.extract(message, specs, known, pending_field=pending_field)
+        audit = ExtractionAudit(
+            policy=EVIDENCE_POLICY_VERSION,
+            proposed=len(extraction.fields),
+            latency_ms=round((time.perf_counter() - started) * 1000, 3),
+        )
         spec_by_key = {s.key: s for s in specs}
         result = dict(current)
 
@@ -243,13 +259,31 @@ class ConversationEngine:
                 continue  # never clear a field with empty extraction
 
             vr = validate_field(spec, raw)
+            # A value is only accepted if the customer's own words support it.
+            # Whatever the provider - regexes today, a language model tomorrow -
+            # a value with no supporting text is treated as never extracted:
+            # it cannot overwrite anything, and the field is simply asked for.
+            evidence = locate_evidence(
+                spec,
+                raw,
+                message,
+                normalized_value=vr.normalized_value if vr.ok else None,
+                reference_date=reference_date,
+            )
+            if evidence is None and settings.extraction_require_evidence:
+                audit.rejected.append(ef.key)
+                continue
+            if evidence is not None:
+                audit.accepted[ef.key] = evidence.method
+
             new_status = FieldStatus.VALIDATED if vr.ok else FieldStatus.INVALID
             new_value = vr.normalized_value if (vr.ok and vr.normalized_value) else raw
             existing = result.get(ef.key)
 
             if existing is None or existing.status == FieldStatus.INVALID:
                 result[ef.key] = FieldOutcome(
-                    ef.key, new_value, new_status, vr.error, ef.confidence, changed=True
+                    ef.key, new_value, new_status, vr.error, ef.confidence, changed=True,
+                    evidence=evidence,
                 )
                 continue
 
@@ -259,16 +293,18 @@ class ConversationEngine:
                 if new_status == FieldStatus.VALIDATED:
                     # a genuine correction: the most recent explicit value wins
                     result[ef.key] = FieldOutcome(
-                        ef.key, new_value, new_status, None, ef.confidence, changed=True
+                        ef.key, new_value, new_status, None, ef.confidence, changed=True,
+                        evidence=evidence,
                     )
                 # else: new value is invalid - keep the existing valid one
                 continue
 
             result[ef.key] = FieldOutcome(
-                ef.key, new_value, new_status, vr.error, ef.confidence, changed=True
+                ef.key, new_value, new_status, vr.error, ef.confidence, changed=True,
+                evidence=evidence,
             )
 
-        return result
+        return result, audit
 
     @staticmethod
     def _classify_fields(

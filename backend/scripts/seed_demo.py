@@ -25,11 +25,14 @@ from sqlalchemy import delete, select
 from app.core.database import SessionLocal
 from app.db.base import Base  # noqa: F401 - ensures every mapper is registered
 from app.db.models.complaint import Complaint
+from app.db.models.complaint_embedding import ComplaintEmbedding
 from app.db.models.complaint_field import ComplaintField
 from app.db.models.conversation import Conversation
 from app.db.models.customer import Customer
 from app.db.models.email_log import EmailLog
 from app.db.models.message import Message
+from app.db.models.ml_feedback import MLFeedback
+from app.db.models.ml_prediction import MLPrediction
 from app.db.models.ticket import Ticket
 from app.schemas.conversation import InboundEmailIn
 from app.services.intake_service import IntakeService
@@ -122,13 +125,20 @@ def reset_demo_data() -> int:
         )
 
         # Children first, parents last.
+        db.execute(delete(MLFeedback).where(MLFeedback.conversation_id.in_(demo_ids)))
         db.execute(delete(Ticket).where(Ticket.conversation_id.in_(demo_ids)))
         if complaint_ids:
             db.execute(
                 delete(ComplaintField).where(ComplaintField.complaint_id.in_(complaint_ids))
             )
+            db.execute(
+                delete(ComplaintEmbedding).where(
+                    ComplaintEmbedding.complaint_id.in_(complaint_ids)
+                )
+            )
             db.execute(delete(Complaint).where(Complaint.id.in_(complaint_ids)))
         db.execute(delete(EmailLog).where(EmailLog.conversation_id.in_(demo_ids)))
+        db.execute(delete(MLPrediction).where(MLPrediction.conversation_id.in_(demo_ids)))
         db.execute(delete(Message).where(Message.conversation_id.in_(demo_ids)))
         db.execute(delete(Conversation).where(Conversation.id.in_(demo_ids)))
         db.execute(delete(Customer).where(Customer.is_demo.is_(True)))
