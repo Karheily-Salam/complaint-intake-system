@@ -8,6 +8,26 @@ Ideally this file moves to its own small "infra" repo once a second project
 exists, since it isn't really about `complaint-intake-system` - it lives
 here for now because this is the only repo with server access set up.
 
+> **Superseded for host-level topics (2026-09-12).** The VPS has been
+> restructured for multi-project hosting. The authoritative document now lives
+> on the server at **`/opt/infra/ARCHITECTURE.md`**.
+>
+> What changed since this file was written:
+> - **TLS is live.** `startplus.tech` + `www` serve HTTPS via Let's Encrypt.
+>   `gateplus.ru` + `www` redirect to it. Certificates renew automatically.
+> - **A shared edge proxy (Caddy) at `/opt/infra/edge` is the only thing bound
+>   to :80/:443.** This project no longer publishes a host port; it is reached
+>   over the external `edge` network by the alias `complaint-intake-web`. The
+>   "give the new project a different host port" advice below is obsolete -
+>   the shared-proxy migration it anticipated has now happened.
+> - **`/opt/ops` moved to `/opt/infra`** (scripts, logs, cron paths). The old
+>   directory is archived under `/opt/backups/pre-migration-*/ops-legacy`.
+> - Backups now run through `/opt/infra/scripts/backup-run.sh`, driven by
+>   per-project definitions in `/opt/infra/backup.d/`.
+>
+> Sections below on SSH, the `deploy` user, UFW, fail2ban, Docker daemon
+> settings and swap remain accurate.
+
 ## At a glance
 
 | | |
@@ -17,7 +37,7 @@ here for now because this is the only repo with server access set up.
 | Firewall | UFW: 22, 80, 443 open; everything else denied by default |
 | Projects | `/opt/projects/<name>/`, one per project, each its own `docker compose` stack |
 | This project | `/opt/projects/complaint-intake-system` - see `DEPLOYMENT.md` |
-| Public URL | http://72.56.114.70/ (no domain yet - see "HTTPS" below) |
+| Public URL | https://startplus.tech/ (TLS live since 2026-09-12) |
 
 ## SSH / access model
 

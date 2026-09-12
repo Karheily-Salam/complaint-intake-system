@@ -14,8 +14,16 @@
 # configured. Configuration belongs in backend/.env or in the application
 # defaults, never here.
 #
-# Only the frontend (Nginx) is published, on host port 80. FastAPI is reachable
-# only on the internal compose network as "backend:8000".
+# NETWORKING / PORTS
+# This stack publishes NO host ports. On the VPS the shared edge proxy
+# (/opt/infra/edge, Caddy) is the only thing bound to :80/:443; it reaches this
+# stack over the external `edge` network using the alias `complaint-intake-web`
+# and terminates TLS for startplus.tech.
+#   - `backend` stays on the private `default` network only: unreachable from
+#     the proxy, from other projects, and from the host.
+#   - Locally, `edge` will not exist. Run the local override instead:
+#       docker compose -f compose.yml -f compose.local.yml up --build
+#     which publishes the frontend on http://localhost/ as before.
 
 services:
   backend:
@@ -33,6 +41,8 @@ services:
       - backend_data:/app/data
     expose:
       - "8000"
+    networks:
+      - default
     healthcheck:
       test:
         - CMD
@@ -44,9 +54,8 @@ services:
       retries: 5
       start_period: 40s
     # Safety net, not a real-world constraint: this service typically uses
-    # ~60MB. The host has 2GB RAM shared with other future projects, so a
-    # runaway leak in any one service should not be able to take the whole
-    # box down. Raise if a real workload ever needs more.
+    # ~60MB. The host has 2GB RAM shared with other projects, so a runaway leak
+    # in any one service should not be able to take the whole box down.
     deploy:
       resources:
         limits:
@@ -61,14 +70,29 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "80:80"
+    expose:
+      - "80"
+    networks:
+      default:
+      edge:
+        aliases:
+          # Unique per project. This is what the edge proxy routes to; every
+          # project must pick its own <project>-web alias.
+          - complaint-intake-web
     deploy:
       resources:
         limits:
           memory: 128M
         reservations:
           memory: 32M
+
+networks:
+  # Private to this stack; Compose creates/destroys it with the project.
+  default:
+  # Shared proxy network, created once by hand and owned by no project:
+  #   docker network create edge
+  edge:
+    external: true
 
 volumes:
   backend_data:

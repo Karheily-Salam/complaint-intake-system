@@ -1,0 +1,16 @@
+# Local development override — NOT used on the VPS.
+#
+#   docker compose -f compose.yml -f compose.local.yml up --build
+#
+# The production compose publishes no ports because the shared edge proxy owns
+# :80/:443. Locally there is no edge proxy, so publish the frontend directly.
+services:
+  frontend:
+    ports:
+      - "80:80"
+    networks:
+      default: null
+
+networks:
+  edge:
+    external: false
