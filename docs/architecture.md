@@ -7,6 +7,10 @@ A single reference for how the system is actually built. The
 developer needs before changing something. Everything here describes code that
 exists. Where a capability is implemented but not switched on, it says so.
 
+For the same system drawn rather than described, see
+[docs/diagrams/](diagrams/): nine diagrams covering context, services, intake,
+threading, the engine, ML, the data model, lifecycles and deployment.
+
 ## Contents
 
 - [System overview](#system-overview)

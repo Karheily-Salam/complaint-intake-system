@@ -41,8 +41,8 @@ email provider by default.
   [Deployment](#production-deployment) · [Honest limits](#honest-limits)
 
 Deeper reference: [architecture](docs/architecture.md) ·
-[ML layer](docs/ml.md) · [ML evaluation](docs/ml/evaluation.md) ·
-[decision records](docs/adr/) ·
+[diagrams](docs/diagrams/) · [ML layer](docs/ml.md) ·
+[ML evaluation](docs/ml/evaluation.md) · [decision records](docs/adr/) ·
 [backup and restore drill](docs/operations/backup-restore.md) ·
 [deployment](DEPLOYMENT.md) · [server notes](SERVER.md)
 
