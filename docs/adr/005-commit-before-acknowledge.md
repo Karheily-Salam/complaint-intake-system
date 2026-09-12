@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](005-commit-before-acknowledge.ru.md)
 
-# ADR-005 — Commit state before acknowledging inbound mail
+# ADR-005: Commit state before acknowledging inbound mail
 
 **Status:** accepted
 
@@ -29,7 +29,7 @@ transaction has committed. The reply is sent inside that transaction.
 
 ## Consequences
 
-- The failure mode is duplicate *work*, never lost work — the correct trade for
+- The failure mode is duplicate *work*, never lost work, the correct trade for
   customer complaints.
 - Duplicates must therefore be harmless, which requires idempotency (ADR-007).
 - Sending the reply inside the transaction means a provider failure rolls the

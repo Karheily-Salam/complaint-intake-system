@@ -1,9 +1,8 @@
 """Emerging-incident detection: bursts of complaints about the same thing.
 
-One outage - a payment provider down, a broken app release - produces many
-complaints within hours, from different customers, in different words and
-languages. Each agent sees one ticket; nobody sees the pattern. This module
-looks for it.
+One outage, say a payment provider going down, produces many complaints within
+hours, from different customers, in different words and languages, and each
+agent only sees their own ticket.
 
 Method, on the stored complaint embeddings (:mod:`app.ml.embeddings`):
 
@@ -30,8 +29,7 @@ Separately, a plain time-series check flags a **volume spike** per complaint
 type (window count against the type's baseline rate, same Poisson test) -
 useful when the complaints about an incident are too varied to cluster.
 
-Everything is advisory. An incident is a prompt for a human to look, not a
-state change: nothing here touches a ticket or sends anything.
+Everything here is advisory: nothing touches a ticket or sends anything.
 """
 
 from __future__ import annotations

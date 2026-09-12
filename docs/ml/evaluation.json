@@ -1,5 +1,4 @@
 {
-  "generated_at": "2026-09-12T00:16:39+00:00",
   "datasets": {
     "classification_test": {
       "path": "datasets/complaints/test.jsonl",

@@ -28,13 +28,13 @@ FastAPI + Pydantic + SQLAlchemy 2.0 + SQLite + Alembic.
 
 ## Key flows
 
-- `POST /api/v1/inbox` — simulate a customer email. `IntakeService` builds a
+- `POST /api/v1/inbox`: simulate a customer email. `IntakeService` builds a
   `ConversationState` from the DB, calls `ConversationEngine.advance()`, persists
   the resolved fields, sends a reply via `MockEmailProvider`, and creates (or
   refreshes) a ticket once the deterministic required-field set is satisfied.
-- `GET /api/v1/tickets`, `GET /api/v1/tickets/{ref}`, `PATCH /api/v1/tickets/{ref}`
-  — employee dashboard.
-- `GET /api/v1/schemas` — complaint field schemas for the frontend.
+- `GET /api/v1/tickets`, `GET /api/v1/tickets/{ref}`, `PATCH /api/v1/tickets/{ref}`:
+  the employee dashboard.
+- `GET /api/v1/schemas`: complaint field schemas for the frontend.
 
 ## Conversation engine guarantees
 
@@ -44,7 +44,7 @@ merging new extractions without clobbering existing values on empty extraction;
 detecting invalid values and asking again; customer corrections (invalid→valid
 and valid→valid); the complaint type becoming known only after an ambiguous first
 message; and switching to ticketed exactly when the schema's required fields are
-all valid. The engine **never branches on a field value** — it only asks the
+all valid. The engine **never branches on a field value**; it only asks the
 schema "what fields are required?" and collects them. See
 `tests/test_conversation_flows.py` and `tests/test_engine_merge.py`.
 
@@ -54,8 +54,8 @@ schema "what fields are required?" and collects them. See
 `classify`, `extract`, `summarize`, `compose_reply`, `available`. Selected by
 `AI_PROVIDER`:
 
-- `rule_based` (default) — offline, deterministic, no network. The test baseline.
-- `ollama` — local LLM via `http://localhost:11434`. Typed I/O, schema-derived
+- `rule_based` (default): offline, deterministic, no network. The test baseline.
+- `ollama`: local LLM via `http://localhost:11434`. Typed I/O, schema-derived
   field definitions, instructed never to invent values. If Ollama is unreachable
   it falls back to `rule_based` (`OLLAMA_FALLBACK_TO_RULE_BASED=true`, default) or
   raises `AIProviderError`.
@@ -235,7 +235,7 @@ dashboard (`GET /api/v1/tickets`), the API response, and
 ## Adding / changing a complaint type
 
 Edit or add a YAML file in `app/domain/complaint_schemas/definitions/`. No engine,
-service, or prompt changes required — the engine reads required fields from the
+service, or prompt changes required. The engine reads required fields from the
 schema each turn.
 
 **Deposit method is a generic free-text field.** Available methods differ by
@@ -243,9 +243,10 @@ country/market and change over time, so the prototype does not model specific
 methods (no `bank_transfer` / `crypto` / `card` / `e_wallet` anywhere). The AI
 extracts whatever the customer says (e.g. "my local payment wallet") verbatim;
 it is never mapped to a category and never triggers extra required fields.
-`ComplaintSchema.fields_for()` is the seam where method/country-specific rules
-could be layered in later without touching the engine — see
-`definitions/deposit_methods/README.md`.
+`ComplaintSchema.fields_for()` (in `app/domain/complaint_schemas/spec.py`) is the
+seam where method/country-specific rules could be layered in later without
+touching the engine: it is already asked "what fields are required right now?"
+every turn, so a wrapper returning extra `FieldSpec`s needs no engine change.
 
 ## Regenerating a migration after model changes
 

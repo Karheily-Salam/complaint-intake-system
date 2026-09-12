@@ -1,13 +1,13 @@
 🇬🇧 **English** | [🇷🇺 Русский](001-email-only-intake.ru.md)
 
-# ADR-001 — Email-only intake instead of a web form
+# ADR-001: Email-only intake instead of a web form
 
 **Status:** accepted
 
 ## Context
 
-Complaint intake is usually either fully manual — someone reads each email and
-chases the customer for the details they left out — or replaced with a web form
+Complaint intake is usually either fully manual (someone reads each email and
+chases the customer for the details they left out) or replaced with a web form
 that customers abandon halfway through. A form also assumes the customer knows
 which fields matter, which is the part they are worst at.
 
@@ -36,7 +36,7 @@ in the same thread until it has what it needs.
 - The interesting engineering moves into the conversation: partial information,
   arbitrary ordering, corrections, several languages, and threading.
 - Validation must be conversational rather than a red field label.
-- No customer input can be trusted for identity — email sender addresses are
+- No customer input can be trusted for identity: email sender addresses are
   spoofable, which shapes the security model (see ADR-008).
 - Demonstrating the product needs a mail client, not a form, which is why the
   demo is built the way it is.

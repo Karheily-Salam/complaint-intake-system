@@ -1,13 +1,7 @@
 name: CI
 
-# Portfolio repository: the point of this workflow is that a visitor (or a
-# future me) can see at a glance that the suite genuinely passes from a clean
-# checkout - not just on the machine it was written on.
-#
-# It needs no secrets and no external services. The tests run against the mock
-# email provider and the deterministic rule-based AI provider, each creating
-# its own throwaway SQLite file, so nothing here touches the real mailbox,
-# Timeweb, DNS, or the production database.
+# No secrets and no external services: the tests use the mock email provider,
+# the rule-based AI provider, and a throwaway SQLite file per test.
 on:
   push:
     branches: [main]

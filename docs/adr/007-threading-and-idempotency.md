@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](007-threading-and-idempotency.ru.md)
 
-# ADR-007 — Email threading and idempotency strategy
+# ADR-007: Email threading and idempotency strategy
 
 **Status:** accepted
 
@@ -46,5 +46,5 @@ created.
 - The unique index makes duplicate suppression a database guarantee rather than
   application logic, so it holds even under concurrency.
 - Every value involved is attacker-controlled, so headers are sanitised and
-  bounded at the model boundary — a subject containing a newline once made
+  bounded at the model boundary: a subject containing a newline once made
   sending fail permanently and the message retry forever.

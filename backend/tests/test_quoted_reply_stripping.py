@@ -20,7 +20,7 @@ from app.email.quoting import strip_quoted_reply
 PRODUCTION_CASE = (
     "89669207061\r\n"
     "\r\n"
-    "On Fri, Sep 11, 2026 at 18:54 Salam Karheily <salaam.karhiely@gmail.com>\r\n"
+    "On Fri, Sep 11, 2026 at 18:54 A Sender <sender@example.com>\r\n"
     "wrote:\r\n"
     "\r\n"
     "> yes\r\n"
@@ -33,7 +33,7 @@ def test_the_production_message_is_reduced_to_the_customers_answer():
 
 def test_no_quoted_date_survives_to_be_misread():
     cleaned = strip_quoted_reply(PRODUCTION_CASE)
-    for fragment in ("Sep", "2026", "wrote", "salaam.karhiely@gmail.com"):
+    for fragment in ("Sep", "2026", "wrote", "sender@example.com"):
         assert fragment not in cleaned
 
 

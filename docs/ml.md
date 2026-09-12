@@ -6,7 +6,7 @@ Everything statistical in this system is an *assistant*. It proposes a
 complaint type, points at the text supporting a value, says which tickets look
 alike, and flags an unusual burst. It never changes a ticket's status, merges
 tickets, or sends a customer anything. The deterministic engine, the YAML
-complaint schemas and support staff remain the decision makers — see
+complaint schemas and support staff make the decisions. See
 [ADR 009](adr/009-ml-assists-the-deterministic-engine.md).
 
 It also has to run on the real host: one vCPU, 1.9 GB of RAM, a 384 MB backend
@@ -34,8 +34,8 @@ The decision order in `app/ai/providers/hybrid.py`:
    and auditable, and always wins. The model may never overrule it.
 2. **The classifier**, only where the rules found nothing, and only when its
    calibrated probability clears the abstention threshold.
-3. **The provider's own fallback** otherwise — which is exactly the pre-ML
-   behaviour, including asking the customer what the problem is about.
+3. **The provider's own fallback** otherwise, which is the pre-ML behaviour,
+   including asking the customer what the problem is about.
 
 Three things make the model's output safe to act on:
 
@@ -49,8 +49,8 @@ Three things make the model's output safe to act on:
   prediction is withheld and the engine asks the customer, exactly as before.
 
 `ML_CLASSIFIER_MODE=shadow` computes and records the model's opinion without
-letting it decide anything — the safe way to evaluate a new model on live
-traffic. `off` removes it entirely.
+letting it decide anything. That is how a new model is evaluated on live
+traffic before it is trusted. `off` removes it entirely.
 
 ## Extraction: no value without evidence
 
@@ -68,8 +68,8 @@ value. Matching, strictest first:
 
 The evidence is stored with the field and shown in the dashboard, so an agent
 can see why the system believes a value. This guard applies to every provider,
-including a future language model — measured hallucination rate on the gold set
-is **0.000**.
+including a future language model. The measured hallucination rate on the gold
+set is zero.
 
 ## Embeddings, similarity and incidents
 
@@ -80,8 +80,8 @@ vectors carry as little personal data as possible.
 
 **Similar tickets** combine three signals: semantic similarity, customer
 identity, and extracted fields with the same value. "Possible duplicate"
-requires strong evidence — the same customer and near-identical text, or the same
-transaction reference. Text alone is only ever "similar", because in a complaint
+requires strong evidence: the same customer and near-identical text, or the
+same transaction reference. Text alone is only ever "similar", because in a complaint
 inbox every withdrawal complaint sounds like every other one.
 
 **Incidents** cluster the recent window (average-linkage agglomerative, no preset
@@ -105,7 +105,7 @@ With it, a Russian and an Arabic description of the same problem land together:
 cross-lingual nearest-neighbour accuracy is 100% on the test set, against 35% for
 hashing.
 
-It is not free. Measured resident size of the whole backend process:
+Measured resident size of the whole backend process:
 
 | Configuration | Resident |
 |---|---:|
@@ -124,8 +124,8 @@ takes 128 MB).
 ## Learning from staff
 
 A correction in the dashboard (complaint type or one field) is applied as a staff
-decision — validated against the schema, `source=employee`, never touching the
-ticket's status — and recorded in `ml_feedback` with everything a future model
+decision (validated against the schema, `source=employee`, never touching the
+ticket's status) and recorded in `ml_feedback` with everything a future model
 needs: the original value, which layer produced it (rules, classifier,
 extractor), its model version and confidence, the evidence it cited, and the
 inbound message it came from.
@@ -138,7 +138,7 @@ can create demo tickets.
 ## Evaluation
 
 `backend/scripts/evaluate_ml.py` runs the held-out sets through the real code
-paths — the same providers and the same conversation engine — and writes
+paths, the same providers and the same conversation engine, and writes
 [`evaluation.md`](ml/evaluation.md) and `evaluation.json`. It is fully
 reproducible: fixed files, hashes recorded, no sampling.
 
@@ -165,15 +165,15 @@ which layer decided, abstention rate, classifier latency, extraction rejection
 rate, PSI drift between the recent window and the one before it, and the staff
 correction rate per layer.
 
-One number there is worth singling out: **shadow agreement**. On every message a
-keyword rule decided, the classifier's own opinion was recorded anyway, so the
-two can be compared continuously on real traffic at no risk to any customer.
+**Shadow agreement** is the useful one: on every message a keyword rule
+decided, the classifier's opinion was recorded anyway, so the two can be
+compared continuously on real traffic at no risk to any customer.
 
 ## Privacy
 
 - Identifiers are masked before text reaches an embedding, an incident label or
   an exported dataset (`app/ml/pii.py`).
-- `ml_predictions` stores labels, scores and timings — never message text,
+- `ml_predictions` stores labels, scores and timings, never message text,
   addresses or values.
 - Demo and real data are analysed separately everywhere, as in the rest of the
   system.

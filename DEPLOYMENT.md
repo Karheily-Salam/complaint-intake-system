@@ -11,7 +11,7 @@ The stack is two containers, orchestrated by `compose.yml`:
 | `backend`  | `python:3.12-slim`    | internal only    | FastAPI + Alembic under uvicorn on `:8000` |
 | `frontend` | `nginx:1.27-alpine`   | host `:80`       | serves the built React SPA, reverse-proxies `/api/` → `backend:8000` |
 
-- The browser only ever talks to `http://<host>/` — Nginx proxies the API, so
+- The browser only ever talks to `http://<host>/`. Nginx proxies the API, so
   there is no CORS dependency and no hard-coded backend URL in the frontend
   (`VITE_API_BASE_URL` defaults to the relative `/api/v1`).
 - SQLite lives at `/app/data/complaint_intake.db` inside the backend container,

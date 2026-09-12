@@ -1,6 +1,6 @@
 """Programmatic Alembic runner.
 
-This — together with the ``alembic`` CLI itself — is the *only* mechanism
+This, together with the ``alembic`` CLI itself, is the *only* mechanism
 allowed to create or alter the database schema. Application code must never
 use ``Base.metadata.create_all()`` or hand-written DDL (see backend/README.md).
 """

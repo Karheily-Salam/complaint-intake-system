@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](003-ai-provider-abstraction.ru.md)
 
-# ADR-003 — AI behind a provider interface
+# ADR-003: AI behind a provider interface
 
 **Status:** accepted
 
@@ -15,8 +15,8 @@ model is slow and flaky.
 `AIProvider` is an interface with five narrow operations: classify, extract,
 summarise, detect language, compose reply. Two implementations exist:
 
-- `RuleBasedAIProvider` — deterministic, offline, the default.
-- `OllamaAIProvider` — a local LLM, opt-in via `AI_PROVIDER=ollama`, with an
+- `RuleBasedAIProvider`: deterministic, offline, the default.
+- `OllamaAIProvider`: a local LLM, opt-in via `AI_PROVIDER=ollama`, with an
   automatic fallback to rule-based when Ollama is unreachable.
 
 ## Alternatives considered

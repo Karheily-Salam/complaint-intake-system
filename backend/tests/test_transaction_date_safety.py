@@ -23,7 +23,7 @@ from app.email.quoting import strip_quoted_reply
 
 PRODUCTION_ANSWER = (
     "89669207061\r\n\r\n"
-    "On Fri, Sep 11, 2026 at 18:54 Salam Karheily <salaam.karhiely@gmail.com>\r\n"
+    "On Fri, Sep 11, 2026 at 18:54 A Sender <sender@example.com>\r\n"
     "wrote:\r\n\r\n> yes\r\n"
 )
 

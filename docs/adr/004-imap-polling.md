@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](004-imap-polling.ru.md)
 
-# ADR-004 — IMAP polling rather than webhooks or a mail API
+# ADR-004: IMAP polling instead of webhooks or a mail API
 
 **Status:** accepted
 
@@ -22,7 +22,7 @@ Poll an IMAP mailbox on an interval, send over SMTP, both behind the
 
 - **Inbound webhook provider.** Requires owning a domain and pointing its MX
   records at the provider, plus a public HTTPS endpoint. Neither existed, so
-  this was not merely less convenient — it was unavailable.
+  this was not merely less convenient, it was unavailable.
 - **Gmail API / Microsoft Graph.** OAuth app registration and consent screens
   for a single mailbox. Microsoft has also disabled basic auth for personal
   accounts, so this is the *only* option there, but it is disproportionate here.
@@ -36,7 +36,7 @@ Poll an IMAP mailbox on an interval, send over SMTP, both behind the
 - Delivery latency is up to one poll interval (~60s), which is irrelevant for
   complaint intake.
 - The mailbox effectively acts as the inbound queue, with at-least-once
-  delivery — which is why idempotency matters (see ADR-007).
+  delivery, which is why idempotency matters (see ADR-007).
 - Blocking libraries on an async event loop needed care: provider calls run in
   a worker thread and carry explicit socket timeouts, because a blackholed
   connection would otherwise hang the whole application.

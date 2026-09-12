@@ -26,14 +26,14 @@ Not backed up, because it is reproducible or must not be copied around:
 crontab.
 
 It uses SQLite's **online backup API** (`sqlite3.Connection.backup()`), executed
-inside the container through the Python already present — deliberately *not*
+inside the container through the Python already present, and *not*
 `cp` or `docker cp`, either of which can capture a torn file while a write is
 in progress.
 
 - **Location:** `/opt/backups/complaint-intake-system/`
 - **Naming:** `complaint-intake-system-YYYYMMDD-HHMMSS.db.gz`
 - **Retention:** 14 days, enforced by the script, which only ever deletes its
-  own timestamped files — never the live volume.
+  own timestamped files, never the live volume.
 
 ```bash
 # Take one by hand
@@ -74,7 +74,7 @@ at, and therefore whether the current code can run against it.
 
 ### 3. Verify the application actually works against it
 
-Integrity is not compatibility — a sound file at an old schema still breaks.
+Integrity is not compatibility: a sound file at an old schema still breaks.
 Start a throwaway container pointed at the restored copy:
 
 ```bash

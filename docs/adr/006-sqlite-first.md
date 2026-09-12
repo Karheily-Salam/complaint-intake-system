@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](006-sqlite-first.ru.md)
 
-# ADR-006 — SQLite for the first deployment
+# ADR-006: SQLite for the first deployment
 
 **Status:** accepted
 
@@ -19,13 +19,13 @@ connection.
 
 - **PostgreSQL now.** A second container, more memory on a 2 GB host, backups to
   design, and no capability this workload needs. Chosen against deliberately,
-  not from unfamiliarity — the migration path is understood and mostly prepared.
+  not from unfamiliarity: the migration path is understood and mostly prepared.
 - **A managed database.** Cost and latency for no benefit at this size.
 - **Files or JSON.** No transactions, which ADR-005 depends on entirely.
 
 ## Consequences
 
-- Backups are a file copy — taken with SQLite's online-backup API rather than
+- Backups are a file copy, taken with SQLite's online-backup API instead of
   `cp`, so a live database is never captured mid-write.
 - `foreign_keys=ON` matters more than it sounds: SQLite ignores foreign keys by
   default, which would make the migrations' constraints decorative. Turning it
@@ -33,4 +33,4 @@ connection.
 - The ceiling is one writer. This is the main reason the system is single-node,
   and the honest limit stated in the README.
 - Migrating to PostgreSQL means a URL change, a migration run, and re-testing
-  concurrency assumptions — SQLAlchemy and Alembic are already the seam.
+  concurrency assumptions. SQLAlchemy and Alembic are already the seam.

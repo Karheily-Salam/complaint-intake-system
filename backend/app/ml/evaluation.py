@@ -277,7 +277,7 @@ def score_extraction(cases: list[dict]) -> ExtractionReport:
         rejected += len(case.get("rejected", []))
         language = case.get("language", "?")
         case_ok = True
-        for key in set(gold) | set(predicted):
+        for key in sorted(set(gold) | set(predicted)):
             counter = per_field.setdefault(key, Counter())
             lang_counter = per_language.setdefault(language, Counter())
             if key in gold and gold[key] == predicted.get(key):

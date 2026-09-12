@@ -31,17 +31,14 @@ here for now because this is the only repo with server access set up.
   need `sudo` - note this is effectively root-equivalent access, a known
   Docker caveat, acceptable here since this is a single-operator box and
   `sudo` already grants root anyway).
-- **`root`** - kept reachable, but **key-only** (`PermitRootLogin
-  prohibit-password`); password login is disabled account-wide
-  (`PasswordAuthentication no`, set in
-  `/etc/ssh/sshd_config.d/10-hardening.conf`, which is named to sort before
-  the distro's own `50-cloud-init.conf` - sshd uses "first match wins" across
-  included files, so ordering matters). Root-by-key plus the Timeweb web
+- **`root`** - kept reachable, but key-only; password authentication is
+  disabled account-wide. A drop-in config under `/etc/ssh/sshd_config.d/` holds
+  the hardening, and it has to sort before the distro's own file because sshd
+  takes the first match across included files. Root-by-key plus the Timeweb web
   console (out-of-band, independent of sshd) are the two recovery paths if
   `deploy` is ever unusable.
-- **fail2ban** is enabled for `sshd` (`/etc/fail2ban/jail.local`): 5 failed
-  attempts within 10 minutes bans the source IP for 1 hour. Check bans with
-  `fail2ban-client status sshd`.
+- **fail2ban** is enabled for `sshd` and bans repeated failed logins. Check
+  bans with `fail2ban-client status sshd`.
 - No new keys were generated and none were ever printed to a terminal or
   committed anywhere - the only key material in play is whatever you already
   used to reach root.
@@ -66,8 +63,7 @@ container exposure is **never `ports:` a container port you don't want
 public - use `expose:` for internal-only** (exactly what `backend` already
 does). This matters for every future project, not just this one.
 
-Check status: `ufw status verbose`. Fail2ban bans: `fail2ban-client status
-sshd`.
+Check status: `ufw status verbose`.
 
 ## Docker
 

@@ -10,11 +10,10 @@ part that changes without anyone editing code:
   provider - and how often the classifier abstains. A rising abstention rate
   means the incoming mail no longer looks like the training data.
 * **Shadow agreement** - on every message the rules decided, the classifier's
-  own opinion was recorded anyway. How often the two agree is a free,
-  continuous check on the model against real traffic, with no risk to a
-  customer: it is exactly what shadow mode measures, running all the time.
-* **Latency** - the classifier sits in the path between a customer's email
-  and the reply, which is held to about a second end to end.
+  own opinion was recorded anyway, so the two can be compared continuously on
+  real traffic without any risk to a customer.
+* **Latency** - the classifier sits between a customer's email and the reply,
+  which is held to about a second end to end.
 * **Drift** - PSI between the recent window and the one before it, for the
   predicted-label mix and for the confidence distribution.
 * **Correction rate** - how often staff had to fix what a layer decided. The

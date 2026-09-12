@@ -1,6 +1,6 @@
 🇬🇧 **English** | [🇷🇺 Русский](008-demo-isolation.ru.md)
 
-# ADR-008 — Public demo isolated from real customer data
+# ADR-008: Public demo isolated from real customer data
 
 **Status:** accepted
 
@@ -20,9 +20,9 @@ record.
 
 Two surfaces, separated in the database rather than in the UI:
 
-- **Public** — `POST /inbox` and `/demo/*`. Every read is filtered to
+- **Public**: `POST /inbox` and `/demo/*`. Every read is filtered to
   conversations flagged `is_demo` *in the query*.
-- **Staff** — `/tickets`, `/conversations`, `/ops/*`. Requires `STAFF_API_KEY`,
+- **Staff**: `/tickets`, `/conversations`, `/ops/*`. Requires `STAFF_API_KEY`,
   compared in constant time, with no default: unset means `503`, never open.
 
 Customer identity is `(email, is_demo)`, so demo and real customers are
@@ -42,7 +42,7 @@ separate rows even when they share an address.
 ## Consequences
 
 - A real conversation cannot be *loaded* through the public API with any id or
-  reference — verified by probing a live instance with real and demo records
+  reference, verified by probing a live instance with real and demo records
   side by side.
 - Demo data is genuinely disposable: `scripts/seed_demo.py --reset` deletes
   demo-scoped rows only, which is tested.

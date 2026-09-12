@@ -5,14 +5,13 @@ the request body. With a real transport configured that was an open path to
 "make this server email anyone": the recipient is attacker-chosen, and the
 values the attacker supplies come back quoted in the ticket confirmation.
 
-The rule enforced here is one line: **a demo conversation never touches the
-real transport.** It is answered by a simulated provider instead, which is all
-the demo ever showed anyway - the reply is returned in the response and stored
-on the thread either way.
+The rule: a demo conversation never touches the real transport. It is answered
+by a simulated provider, and the reply is still returned in the response and
+stored on the thread.
 
-These tests configure a real (non-simulated) provider, which is the only
-situation where the bug existed; with the mock configured - local development
-and the rest of the suite - the same object is used as before.
+These tests configure a real (non-simulated) provider, the only situation where
+the bug existed. With the mock configured, as in local development and the rest
+of the suite, the same provider object is used as before.
 """
 
 from __future__ import annotations
